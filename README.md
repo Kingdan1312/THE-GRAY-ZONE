@@ -4,7 +4,7 @@ A place for thoughts that aren't finished yet. One file, `index.html`, no build 
 
 It has three scales:
 
-- **galaxy**: your own thoughts. They gather into constellations by the words they share. You can refine them, keep notes beside them, and join stars with lines. Saved in your browser only.
+- **galaxy**: your own thoughts. They gather into constellations by the words they share. You can refine them, keep notes beside them, and join stars with lines. Signed in with Google, your galaxy is saved to your account and follows you to any device. Signed out, it stays in that browser.
 - **nebulae**: small rooms. You can glance at one, join it, reply, resonate, or found your own. Eight sample rooms with seeded voices are included so the sky isn't empty.
 - **open sky**: send a thought outward. Results come back as stars grouped by theme or by source, and each one opens in a new tab.
 
@@ -56,7 +56,11 @@ The names of the buttons in the Firebase console change now and then, so treat t
 
 8. Upload the edited `index.html` to GitHub.
 
-Now the **you** button shows "sign in with google". Once signed in, a nebula you found is shared with everyone signed in to your copy, and its panel has a **copy invite link** button.
+Now the **you** button shows "sign in with google". Once signed in:
+
+- **Your galaxy is kept in your Google account.** Your thoughts, constellations, notes, lines, display name and saved searches are stored in Firestore under your account. Sign in with the same account on a phone or another computer and the same galaxy appears, and changes made on one device show up on the others. Each person who signs in gets their own private galaxy that only they can read.
+- **Signed-out work stays separate.** What you write while signed out is kept in that browser only and is not added to your account. Signing out brings that browser's own galaxy back.
+- A nebula you found is shared with everyone signed in to your copy, and its panel has a **copy invite link** button.
 
 The config values are not secrets. They identify your project, and the rules below are what protect the data.
 
@@ -66,6 +70,11 @@ The config values are not secrets. They identify your project, and the rules bel
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // each person's own galaxy: only they can read or change it
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
     match /nebulae/{room} {
       allow read: if request.auth != null;
       allow create: if request.auth != null
@@ -95,7 +104,7 @@ With these rules, anyone who signs in to your copy with a Google account can rea
 
 ## Things to know
 
-- **What is stored where.** Your galaxy, saved searches and local nebulae are in your own browser. Shared nebulae, and the name you chose to show, are in your Firebase project. "Hide my profile" posts as "someone", but your Google account id is still stored with each post so that only you can edit it.
+- **What is stored where.** Signed in, your galaxy, display name and saved searches are in your Firebase project under `users/<your account id>`, readable only by you. A copy is cached in the browser for speed and removed when you sign out. Signed out, they are in that browser only. Shared nebulae are in your Firebase project. Your choices in the sample rooms (replies, joins, votes) and nebulae you found while signed out stay in the browser. "Clear my traces" while signed in also erases your account's copy. A Firestore document holds up to 1 MB, which is room for several thousand thoughts. If a galaxy grows past that, saved searches are kept without their results. "Hide my profile" posts as "someone", but your Google account id is still stored with each post so that only you can edit it.
 - **The open sky sends your search words to the sources that are switched on.** You can switch sources off under **searches**.
 - **Theme grouping is simple.** Results are gathered around the words they share. It runs in the browser and makes no extra requests.
 - **Free limits.** The Spark plan has daily read and write quotas. A group of friends will not come close, but when a quota runs out Firebase pauses until the next day rather than charging.

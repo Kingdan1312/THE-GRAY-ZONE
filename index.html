@@ -627,13 +627,27 @@ try {
     } else if (old) { const d = JSON.parse(old); if (d && Array.isArray(d.thoughts)) { legacy = d; if (typeof d.first === 'number') store.first = d.first; } }
   } catch (e) { /* unreadable save: start clean */ }
 } catch (e) { storageOK = false; }
-{ const A = (o, k) => { if (!Array.isArray(o[k])) o[k] = []; }, O = (o, k) => { if (!o[k] || typeof o[k] !== 'object' || Array.isArray(o[k])) o[k] = {}; };
-  A(store.galaxy, 'clusters'); A(store.galaxy, 'thoughts'); A(store.rooms, 'clusters'); A(store.rooms, 'thoughts'); A(store.rooms, 'proposals'); A(store.sky, 'saved');
-  O(store.rooms, 'joined'); O(store.rooms, 'resonated'); O(store.rooms, 'votes'); O(store.sky, 'sources'); }
+function fixStore(s) {
+  const A = (o, k) => { if (!Array.isArray(o[k])) o[k] = []; }, O = (o, k) => { if (!o[k] || typeof o[k] !== 'object' || Array.isArray(o[k])) o[k] = {}; };
+  for (const k of ['profile', 'galaxy', 'rooms', 'sky']) O(s, k);
+  A(s.galaxy, 'clusters'); A(s.galaxy, 'thoughts'); A(s.rooms, 'clusters'); A(s.rooms, 'thoughts'); A(s.rooms, 'proposals'); A(s.sky, 'saved');
+  O(s.rooms, 'joined'); O(s.rooms, 'resonated'); O(s.rooms, 'votes'); O(s.sky, 'sources');
+  return s;
+}
+fixStore(store);
+/* signed in, the galaxy, profile and saved searches belong to the google account (firestore users/{uid}).
+   signed out, they belong to this browser (the guest store). the two never mix. nebulae state stays in this browser either way. */
+const UKEY = id => KEY + '.u.' + id;
+const acct = { uid: null, guest: null, unsub: null, timer: 0, dirty: false, loaded: false, big: false, tab: uid('t'), wait: 0 };
+const synced = (s = store) => ({ profile: s.profile, galaxy: s.galaxy, sky: { saved: s.sky.saved, sources: s.sky.sources, group: s.sky.group } });
 function save() {
-  if (!storageOK) return;
-  try { localStorage.setItem(KEY, JSON.stringify(store)); }
-  catch (e) { storageOK = false; $('#storeNote').hidden = false; say("couldn't save. this visit won't be remembered."); }
+  if (storageOK) {
+    try {
+      localStorage.setItem(KEY, JSON.stringify(acct.uid ? Object.assign({}, store, acct.guest) : store));
+      if (acct.uid) localStorage.setItem(UKEY(acct.uid), JSON.stringify(synced()));
+    } catch (e) { storageOK = false; $('#storeNote').hidden = false; if (!acct.uid) say("couldn't save. this visit won't be remembered."); }
+  }
+  if (acct.uid) { acct.dirty = true; clearTimeout(acct.timer); acct.timer = setTimeout(acctPush, 800); }
 }
 if (!storageOK) $('#storeNote').hidden = false;
 
@@ -769,10 +783,16 @@ for (const d of store.rooms.thoughts) if (d && d.id && clusters.has(d.c) && !byI
 for (const t of thoughts) if (t.re && !byId.has(t.re)) t.re = null;
 for (const c of clusters.values()) layout(c, true);
 // and the galaxy
+function rebuildGalaxy() {   // (re)builds the galaxy from whichever store is active: this browser's, or the signed-in account's
+  inSpace('galaxy', () => {
+    for (const c of [...clusters.values()]) dropCluster(c);
+    for (const d of store.galaxy.clusters) { if (!d || !d.id || clusters.has(d.id)) continue; settleSaved(d); addCluster(Object.assign({}, d, { kind: 'galaxy', founder: 'you' })); }
+    for (const d of store.galaxy.thoughts) if (d && d.id && clusters.has(d.c) && !byId.has(d.id) && typeof d.text === 'string') addThought(Object.assign({}, d, { kind: 'own', mine: true }));
+    for (const c of clusters.values()) layout(c, true);
+  });
+}
 setSpace('galaxy');
-for (const d of store.galaxy.clusters) { if (!d || !d.id || clusters.has(d.id)) continue; settleSaved(d); addCluster(Object.assign({}, d, { kind: 'galaxy', founder: 'you' })); }
-for (const d of store.galaxy.thoughts) if (d && d.id && clusters.has(d.c) && !byId.has(d.id) && typeof d.text === 'string') addThought(Object.assign({}, d, { kind: 'own', mine: true }));
-for (const c of clusters.values()) layout(c, true);
+rebuildGalaxy();
 const proposalsFor = c => (c.demo ? SEED_PROPOSALS : []).concat(store.rooms.proposals).filter(p => p.c === c.id);
 
 /* ---------- view state ---------- */
@@ -1616,10 +1636,16 @@ $('#mark').addEventListener('click', openAbout);
 $('#aboutClose').addEventListener('click', () => about.close());
 for (const d of [about, found, you]) d.addEventListener('click', e => { if (e.target === d) d.close(); });
 let wipeArmed = false;
-$('#wipe').addEventListener('click', e => {
-  if (!wipeArmed) { wipeArmed = true; e.target.textContent = 'erase everything i wrote here'; return; }
-  try { localStorage.removeItem(KEY); localStorage.removeItem('grayzone.v1'); } catch (_) {}
-  storageOK = false; location.reload();
+$('#wipe').addEventListener('click', async e => {
+  if (!wipeArmed) { wipeArmed = true; e.target.textContent = acct.uid ? 'erase everything i wrote, here and in my account' : 'erase everything i wrote here'; return; }
+  const id = acct.uid;
+  if (id) {   // the account copy would otherwise come straight back
+    clearTimeout(acct.timer); acct.dirty = false; acct.loaded = false; if (acct.unsub) { acct.unsub(); acct.unsub = null; }
+    try { await cloud.F.deleteDoc(cloud.F.doc(cloud.db, 'users', id)); }
+    catch (err) { wipeArmed = false; e.target.textContent = 'clear my traces'; return cloudFail('erase your account copy', err); }
+  }
+  try { localStorage.removeItem(KEY); localStorage.removeItem('grayzone.v1'); if (id) localStorage.removeItem(UKEY(id)); } catch (_) {}
+  storageOK = false; acct.uid = null; location.reload();
 });
 about.addEventListener('close', () => { wipeArmed = false; $('#wipe').textContent = 'clear my traces'; });
 
@@ -1631,15 +1657,15 @@ function renderYou() {
   const k = [el('h3', null, 'sharing')];
   if (!cloud.on) k.push(el('p', { class: 'note' }, "this copy isn't connected to a shared space, so nebulae you found live in this browser only. the readme explains how to connect it for free and sign in with google."));
   else if (!cloud.ready) k.push(el('p', { class: 'note' }, cloud.err ? "couldn't reach the sign-in service. check the connection and the firebase settings." : 'connecting.'));
-  else if (cloud.user) k.push(el('p', { class: 'note' }, `signed in with google as ${cloud.user.full || 'you'}. nebulae you found are shared with everyone signed in to this copy.`), el('div', { class: 'row' }, btn('sign out', cloudSignOut)));
-  else k.push(el('p', { class: 'note' }, 'sign in to see shared nebulae and found your own.'), el('div', { class: 'row' }, btn('sign in with google', cloudSignIn, 'b solid')));
+  else if (cloud.user) k.push(el('p', { class: 'note' }, `signed in with google as ${cloud.user.full || 'you'}. your galaxy, name and saved searches are kept in your account, so they follow you to any device you sign in on. nebulae you found are shared with everyone signed in to this copy.`), el('div', { class: 'row' }, btn('sign out', cloudSignOut)));
+  else k.push(el('p', { class: 'note' }, 'sign in to keep your galaxy on every device, see shared nebulae and found your own. what you write while signed out stays in this browser and is not added to your account.'), el('div', { class: 'row' }, btn('sign in with google', cloudSignIn, 'b solid')));
   $('#acct').replaceChildren(...k);
 }
 $('#youBtn').addEventListener('click', () => { renderYou(); if (!you.open) you.showModal(); });
 $('#youClose').addEventListener('click', () => you.close());
 $('#alias').addEventListener('input', e => { store.profile.alias = e.target.value.trim().toLowerCase().slice(0, 24); save(); $('#hideNote').textContent = store.profile.hidden ? 'hidden. in nebulae you appear as “someone”.' : `in nebulae you appear as “${shownAs()}”.`; });
 $('#hideBtn').addEventListener('click', () => { store.profile.hidden = !store.profile.hidden; save(); renderYou(); });
-$('#samplesBtn').addEventListener('click', () => { store.profile.samples = store.profile.samples === false; save(); if (storageOK) location.reload(); else renderYou(); });
+$('#samplesBtn').addEventListener('click', () => { store.profile.samples = store.profile.samples === false; if (acct.guest) acct.guest.profile.samples = store.profile.samples; save(); if (storageOK) location.reload(); else renderYou(); });
 you.addEventListener('close', () => refreshPanel());
 
 let foundFor = null, foundKind = 'room';
@@ -1825,7 +1851,7 @@ async function cloudInit() {
   const cfg = window.GRAY_ZONE_FIREBASE;
   { const m = /^#room-([\w-]{4,40})$/.exec(location.hash || ''); if (m) cloud.invite = m[1]; }
   if (!cfg || !cfg.apiKey || !cfg.projectId) { if (cloud.invite) say("this copy isn't connected, so invite links don't open here.", 7000); return; }
-  cloud.on = true; $('#protoNote').textContent = 'this is a prototype. the sample nebulae are seeded voices. your galaxy stays in this browser. shared nebulae are kept in this copy’s firebase project.';
+  cloud.on = true; $('#protoNote').textContent = 'this is a prototype. the sample nebulae are seeded voices. signed in, your galaxy is kept in your google account on this copy’s firebase project, and shared nebulae are kept there too. signed out, what you write stays in this browser.';
   try {
     const [A, U, F] = await Promise.all([import(FB + 'firebase-app.js'), import(FB + 'firebase-auth.js'), import(FB + 'firebase-firestore.js')]);
     const app = A.initializeApp(cfg);
@@ -1833,6 +1859,8 @@ async function cloudInit() {
     U.onAuthStateChanged(cloud.auth, u => {
       const name = u && (u.displayName || '');
       cloud.user = u ? { uid: u.uid, full: name || 'you', name: name.split(/\s+/)[0].toLowerCase().slice(0, 24) } : null;
+      if (acct.uid && acct.uid !== (u && u.uid)) acctStop();
+      if (u && acct.uid !== u.uid) acctStart(u.uid);
       cloudWatch(); renderYou(); refreshPanel();
       if (cloud.invite && !cloud.user) { renderYou(); if (!you.open) you.showModal(); say('sign in to open the nebula you were invited to.', 0); }
     });
@@ -1841,7 +1869,7 @@ async function cloudInit() {
 }
 async function cloudSignIn() {
   if (!cloud.ready) return;
-  try { await cloud.U.signInWithPopup(cloud.auth, new cloud.U.GoogleAuthProvider()); if (you.open) you.close(); say('signed in.'); }
+  try { await cloud.U.signInWithPopup(cloud.auth, new cloud.U.GoogleAuthProvider()); if (you.open) you.close(); say('signed in. your galaxy now follows your google account.', 5000); }
   catch (e) {
     const code = (e && e.code) || '';
     say(code === 'auth/unauthorized-domain' ? "google doesn't know this address yet. add it under authorized domains in firebase."
@@ -1849,7 +1877,73 @@ async function cloudSignIn() {
         : /popup/.test(code) ? "the sign-in window didn't finish. allow pop-ups and try again." : "couldn't sign in. " + code, 8000);
   }
 }
-async function cloudSignOut() { try { await cloud.U.signOut(cloud.auth); say('signed out.'); } catch (e) { cloudFail('sign out', e); } }
+async function cloudSignOut() { try { await acctPush(); await cloud.U.signOut(cloud.auth); say('signed out. this is the galaxy kept in this browser.', 5000); } catch (e) { cloudFail('sign out', e); } }
+
+/* ───────── your galaxy, kept per google account: firestore users/{uid} ───────── */
+function accountShape(d) {   // what an account holds, filled out with defaults
+  const b = blank(); d = d && typeof d === 'object' ? d : {};
+  return fixStore({ profile: Object.assign(b.profile, d.profile), galaxy: Object.assign(b.galaxy, d.galaxy), rooms: {}, sky: Object.assign(b.sky, d.sky) });
+}
+function swapStore(s) {   // puts another galaxy, profile and saved searches in place, keeping what's open if it still exists
+  const inG = space === 'galaxy', selId = inG && sel ? sel.id : null, cId = inG && selCluster ? selCluster.id : null;
+  s.profile.samples = store.profile.samples;   // the sample rooms are a setting of this browser
+  store.profile = s.profile; store.galaxy = s.galaxy; store.sky = s.sky;
+  rebuildGalaxy();
+  if (inG && space === 'galaxy') { const t = selId && byId.get(selId), c = cId && clusters.get(cId); if (t) selectThought(t, { fly: false }); else if (c) openCluster(c, { fly: false }); }
+  if (you.open) renderYou();
+  refreshPanel();
+}
+function acctStart(id) {
+  acct.uid = id; acct.guest = synced(store); acct.loaded = false; acct.dirty = false;
+  let cached = null;
+  try { cached = JSON.parse(localStorage.getItem(UKEY(id)) || 'null'); } catch (_) {}
+  swapStore(accountShape(cached));   // the copy from the last visit shows at once; the account's copy replaces it when it arrives
+  const F = cloud.F;
+  acct.unsub = F.onSnapshot(F.doc(cloud.db, 'users', id), snap => {
+    if (acct.uid !== id) return;
+    const d = snap.exists() ? snap.data() : null;
+    if (!acct.loaded) {   // first answer: the account's copy wins over anything cached here
+      acct.loaded = true; acct.dirty = false; clearTimeout(acct.timer);
+      acctApply(d, true);
+      if (!d) { acct.dirty = true; acctPush(); }   // a new account starts with an empty galaxy of its own
+      return;
+    }
+    if (!d || snap.metadata.hasPendingWrites || acct.dirty || d.by === acct.tab) return;   // our own echo, or we have newer edits
+    acctApply(d);   // changed on another device
+  }, e => cloudFail('load your galaxy from your account', e));
+}
+function acctApply(d, now) {
+  clearTimeout(acct.wait);
+  if (!now && (mode === 'drift' || refineOrig || (space === 'galaxy' && panelOpen && panel.querySelector('textarea, input[type="text"], select')))) {   // don't pull the page out from under someone mid-edit
+    acct.wait = setTimeout(() => { if (acct.uid && !acct.dirty) acctApply(d); }, 2000); return;
+  }
+  swapStore(accountShape(d));
+  try { localStorage.setItem(UKEY(acct.uid), JSON.stringify(synced())); } catch (_) {}
+}
+function acctPush() {
+  clearTimeout(acct.timer); acct.timer = 0;
+  const id = acct.uid;
+  if (!id || !acct.dirty || !acct.loaded || !cloud.ready) return Promise.resolve();
+  let data = Object.assign({ v: 2 }, synced(), { updated: Date.now(), by: acct.tab });
+  if (JSON.stringify(data).length > 9e5) {   // a firestore document holds up to 1 MB: drop the results of saved searches, keep their words
+    data.sky = Object.assign({}, data.sky, { saved: data.sky.saved.map(s => Object.assign({}, s, { results: [] })) });
+    if (!acct.big) { acct.big = true; say('your galaxy is getting large, so saved searches are kept in your account without their results.', 7000); }
+  }
+  data = JSON.parse(JSON.stringify(data));   // firestore refuses undefined values
+  acct.dirty = false;
+  return cloud.F.setDoc(cloud.F.doc(cloud.db, 'users', id), data).catch(e => { if (acct.uid === id) acct.dirty = true; cloudFail('save your galaxy to your account', e); });
+}
+function acctStop() {   // signed out: back to this browser's own galaxy, and nothing of the account left behind
+  const id = acct.uid; if (!id) return;
+  if (acct.unsub) acct.unsub();
+  clearTimeout(acct.timer); clearTimeout(acct.wait);
+  try { localStorage.removeItem(UKEY(id)); } catch (_) {}
+  const g = acct.guest || synced(blank());
+  Object.assign(acct, { uid: null, guest: null, unsub: null, loaded: false, dirty: false, big: false });
+  swapStore(accountShape(g));
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') acctPush(); });
+window.addEventListener('pagehide', () => acctPush());
 
 function cloudWatch() {   // (re)subscribe to the shared rooms for whoever is signed in
   if (cloud.offRooms) { cloud.offRooms(); cloud.offRooms = null; }
