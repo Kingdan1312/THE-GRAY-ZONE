@@ -71,14 +71,20 @@ a { color: var(--ink); text-underline-offset: 3px; text-decoration-thickness: 1p
 .b.solid { color: var(--black); background: var(--ink); padding: 7px 10px; }
 .b.solid::before, .b.solid::after { content: none; }
 .b.solid:hover { background: #fff; }
+.b.ghost { color: var(--ink); border: 1px solid var(--ink); padding: 6px 9px; transition: background .25s; }   /* the reverse of solid: a companion to the main action */
+.b.ghost::before, .b.ghost::after { content: none; }
+.b.ghost:hover { background: var(--soft); }
 .link { color: var(--dim); border-bottom: 1px solid var(--soft); padding: 4px 0; transition: color .25s, border-color .25s; }
 .link:hover { color: var(--ink); border-color: var(--line); }
 
 /* ── top bar ── */
-.top { position: fixed; z-index: 6; top: 0; left: 0; right: 0; display: flex; align-items: center; justify-content: space-between; gap: 16px;
+.top { position: fixed; z-index: 8; top: 0; left: 0; right: 0; display: flex; align-items: center; justify-content: space-between; gap: 16px;
   padding: 16px 22px; pointer-events: none; }
 .top > * { pointer-events: auto; }
-@media (min-width: 721px) { .top { transition: right .7s cubic-bezier(.2, .7, .2, 1); } body.panel .top { right: var(--panel-w); } }
+@media (min-width: 721px) {
+  body #panel { top: 66px; border-top: 1px solid var(--line); }
+  .top .scales { position: absolute; left: 50%; transform: translateX(-50%); }   /* pinned: neighbours changing width never nudge it */
+}   /* the header stays put; the panel opens beneath it */
 .mark { display: flex; align-items: center; gap: 10px; color: var(--ink); letter-spacing: .34em; font-size: 12px; }
 .mark i { width: 7px; height: 7px; border: 1px solid var(--ink); border-radius: 50%; position: relative; }
 .mark i::after { content: ''; position: absolute; inset: 2px; background: var(--ink); border-radius: 50%; opacity: .7; }
@@ -1494,7 +1500,7 @@ function renderOwn(t, st) {
   const why = sharedWords(t, c);
   n.push(el('p', { class: 'note' }, began(t, c) ? 'it began this constellation.' : why.length ? 'gathered by: ' + why.join(' · ') : 'you placed it here.'));
   if (c.poles) n.push(el('div', { class: 'sec' }, el('h3', null, 'where it sits'), spectrumView(c, t.stance), el('p', { class: 'where' }, stanceWords(t.stance, c))));
-  n.push(el('div', { class: 'row' }, btn('refine', () => renderOwn(t, { refine: true }), 'b solid')), el('div', { class: 'row' },
+  n.push(el('div', { class: 'row' }, btn('refine', () => renderOwn(t, { refine: true }), 'b solid'), btn('+ add a thought', () => openComposer(c), 'b ghost')), el('div', { class: 'row' },
     btn('search the open sky', () => runSky(t.text)), btn('share to a nebula', () => renderOwn(t, { share: true }))));
   n.push(...linksBlock(t, st));
   const near = nearRoom(t.text);
@@ -1537,9 +1543,9 @@ function renderRoomThought(t, st) {
   if (t.mine) main.append(btn('refine', () => renderRoomThought(t, { refine: true }), 'b solid'));
   else if (member && !st.reply) main.append(replyBtn('b solid'));
   if (member) {
+    main.append(btn('+ add a thought', () => openComposer(c), 'b ghost'));   // lands in this nebula
     if (t.mine) { if (!st.reply) more.append(replyBtn()); }
     else more.append(el('button', { class: 'b', type: 'button', 'aria-pressed': String(isRes(t)), onclick: () => { toggleRes(t); renderRoomThought(t, st); panel.querySelector('[aria-pressed]').focus({ preventScroll: true }); } }, 'resonates'));
-    more.append(btn('add a thought here', () => openComposer(c)));
   }
   for (const r of [main, more]) if (r.childNodes.length) n.push(r);
   if (!member) n.push(el('p', { class: 'note' }, "you're glancing. join this nebula to reply, resonate or add your own."),
@@ -1642,17 +1648,34 @@ function openComposer(target) {
   if (mode !== 'map') return;
   if (refineOrig) cancelRefine();
   closeMenu(); linkFrom = null; sel = null; selCluster = null; kb = null;
-  const ta = el('textarea', { id: 'cText', rows: '4', maxlength: '600', placeholder: 'try: ' + EXAMPLES[exN++ % EXAMPLES.length] }), note = el('div');
-  const go = cleared => {
+  // with no target (+ thought, n) you choose where it goes: your galaxy, one of your nebulae, or out to the open sky
+  const rooms = inSpace('nebulae', () => [...clusters.values()].filter(isMember));
+  let dest = target ? null : space === 'sky' ? 'sky' : space === 'nebulae' && rooms.length ? 'nebula' : 'galaxy';
+  const ta = el('textarea', { id: 'cText', rows: '4', maxlength: '600', placeholder: 'try: ' + EXAMPLES[exN++ % EXAMPLES.length] }), note = el('div'), hint = el('p', { class: 'note' });
+  const pick = el('select', { id: 'cRoom' }, rooms.map(r => el('option', { value: r.id }, cname(r)))), room = () => rooms.find(r => r.id === pick.value);
+  const pickWrap = el('div', { class: 'field' }, rooms.length ? [el('label', { for: 'cRoom' }, 'which nebula'), pick] : el('p', { class: 'note' }, "you haven't joined a nebula yet. glance at a few and join one first."));
+  const tabs = target ? null : el('div', { class: 'row', role: 'group', 'aria-label': 'where it goes' },
+    [['galaxy', 'your galaxy'], ['nebula', 'a nebula'], ['sky', 'the open sky']].map(([d, label]) => el('button', { class: 'b', type: 'button', 'data-d': d, onclick: () => { dest = d; sync(); ta.focus(); } }, label)));
+  const goB = btn('let it go', () => go(false), 'b solid');
+  const where = () => target ? 'it lands in ' + cname(target) : dest === 'sky' ? 'it goes out to the open sky' : dest === 'nebula' ? (room() ? 'it lands in ' + cname(room()) : 'join a nebula first') : 'it lands in your galaxy';
+  function sync() {
+    hint.textContent = 'enter to let it go · ' + where(); pickWrap.hidden = dest !== 'nebula'; goB.textContent = dest === 'sky' ? 'send it out' : 'let it go';
+    if (tabs) for (const b of tabs.children) b.setAttribute('aria-pressed', String(b.dataset.d === dest));
+  }
+  pick.addEventListener('change', sync);
+  function go(cleared) {
     const text = ta.value.trim(); if (!text) { ta.focus(); return; }
     if (!cleared && isCrisis(text)) { note.replaceChildren(careBlock(() => { note.replaceChildren(); ta.focus(); }, () => go(true))); return; }
-    place(text, target || null);
-  };
+    if (target) return place(text, target);
+    if (dest === 'sky') { closePanel(); return runSky(text); }
+    if (dest === 'nebula') { const r = room(); return r ? place(text, r) : (rooms.length ? pick.focus() : null); }
+    place(text, null);
+  }
   ta.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); go(false); } });
-  setPanel([head(el('span', { class: 'meta' }, 'a new thought')),
-    el('div', { class: 'field' }, el('label', { for: 'cText', class: 'ask' }, "what's on your mind?"), ta),
-    el('p', { class: 'note' }, 'enter to let it go · it lands in ' + (target ? cname(target) : 'your galaxy')), note,
-    el('div', { class: 'row' }, btn('let it go', () => go(false), 'b solid'), btn('cancel', () => closePanel(true), 'link'))], 'a new thought');
+  setPanel([head(el('span', { class: 'meta' }, 'a new thought')), tabs,
+    el('div', { class: 'field' }, el('label', { for: 'cText', class: 'ask' }, "what's on your mind?"), ta), pickWrap, hint, note,
+    el('div', { class: 'row' }, goB, btn('cancel', () => closePanel(true), 'link'))].filter(Boolean), 'a new thought');
+  sync();
   openPanel(); setTimeout(() => ta.focus({ preventScroll: true }), 60);
 }
 function leaveCompose() { landing.classList.add('leaving'); landing.inert = true; setMode('map'); mapRate = 2.4; mapAT = 1; showAll(1400); canvas.focus({ preventScroll: true }); }
