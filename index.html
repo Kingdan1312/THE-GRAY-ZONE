@@ -111,11 +111,13 @@ form:focus-within .rule { background-size: 100% 100%; }
 .under { display: flex; justify-content: space-between; align-items: center; gap: 12px; min-height: 34px; color: var(--dim); font-size: 12px; }
 .go { opacity: 0; pointer-events: none; transition: opacity .5s, color .25s; }
 .go.on { opacity: 1; pointer-events: auto; }
-.wander { align-self: flex-start; margin-top: 18px; font-size: 12px; }
+.wander { align-self: flex-start; margin-top: 18px; font-size: 12px; color: var(--dim); display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
+.wander span { margin-right: 4px; }
+.newhere { align-self: flex-start; font-size: 11px; margin-top: -4px; }
 @keyframes rise { from { opacity: 0; transform: translateY(8px); filter: blur(4px); } to { opacity: 1; transform: none; filter: none; } }
 .landing.first .prompt { animation: rise 1.6s .5s both; }
 .landing.first #mind, .landing.first .rule { animation: rise 1.6s 1s both; }
-.landing.first .under, .landing.first .wander { animation: rise 1.6s 1.7s both; }
+.landing.first .under, .landing.first .wander, .landing.first .newhere { animation: rise 1.6s 1.7s both; }
 .top { animation: rise 1.6s .2s both; }
 
 /* gentle note shown instead of posting */
@@ -216,6 +218,9 @@ dialog.about { width: min(620px, calc(100% - 32px)); }
 .about p b { color: var(--ink); font-weight: 400; }
 .keys { color: var(--dim); font-size: 12px; display: grid; grid-template-columns: auto 1fr; gap: 3px 16px; }
 .keys kbd { font: inherit; color: var(--mid); }
+.ways-h { color: var(--ink); font-size: 12px; font-weight: 400; letter-spacing: .1em; }
+.ways { gap: 8px 16px; line-height: 1.65; }
+.ways b { font-weight: 400; color: var(--mid); white-space: nowrap; }
 .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
 /* ── phones ── */
@@ -326,7 +331,8 @@ dialog#you { width: min(460px, calc(100% - 32px)); }
       <button class="b go" id="go" type="submit">let it go</button>
     </div>
     <div id="care" hidden></div>
-    <button class="link wander" id="wander" type="button">or wander</button>
+    <p class="wander" id="wander"><span>or wander into</span> <button class="link" type="button" data-go="galaxy">your galaxy</button> · <button class="link" type="button" data-go="nebulae">nebulae</button> · <button class="link" type="button" data-go="sky">the open sky</button></p>
+    <button class="link newhere" id="newHere" type="button">new here? see how it works</button>
   </form>
 </main>
 
@@ -352,6 +358,13 @@ dialog#you { width: min(460px, calc(100% - 32px)); }
     <p><b>a place for thoughts that aren't finished yet.</b><br>
     your galaxy keeps them. nebulae are small rooms. the open sky is the wider web.<br>
     stars brighten as you refine them. nothing here is counted.</p>
+    <h3 class="ways-h">how it works</h3>
+    <div class="keys ways">
+      <b>galaxy</b><span>your own thoughts. they gather by the words they share, and brighten as you refine them.</span>
+      <b>nebulae</b><span>small rooms around one question, with two ends named. glance, join, add a thought, reply.</span>
+      <b>open sky</b><span>send a thought outward to wikipedia, papers, books, hacker news and the archive. keep what helps.</span>
+    </div>
+    <p class="note">a thought can travel: search outward from your galaxy, keep what you find, share a copy to a room.</p>
     <div class="keys" aria-label="keys">
       <kbd>drag · scroll</kbd><span>pan and zoom</span>
       <kbd>arrows</kbd><span>move between stars</span>
@@ -514,6 +527,10 @@ const SEED_PROPOSALS = [
   { id: 'p-city', c: 'city', name: 'strangers, nearby', lean: .58 },
   { id: 'p-machine', c: 'machine', name: 'the borrowed hand', lean: .34 },
 ];
+
+// shown as the composer's placeholder: a question, a topic, a hobby argument, a belief in motion
+const EXAMPLES = ['is it worth moving cities for work?', 'why do i keep putting off the things i care about?', 'how does sleep shape memory?', 'where did all the third places go?',
+  'film or digital for street photos?', 'is a sourdough starter worth the fuss?', "i used to think ai art was theft. now i'm less sure.", "maybe ambition isn't the opposite of rest."];
 
 /* ---------- text ---------- */
 const STOP = new Set((
@@ -877,10 +894,10 @@ const hush = () => { clearTimeout(sayTimer); captionEl.classList.remove('on'); }
 /* ---------- moving between the three scales ---------- */
 const greeted = {};
 function greet() {
-  if (space === 'galaxy' && !thoughts.length) return say('your galaxy is empty. place a thought to begin.', 0);
+  if (space === 'galaxy' && !thoughts.length) return say("your galaxy is empty. start with a question you keep circling, or something you're learning.", 0);
   if (space === 'sky' && !thoughts.length) { say('send a thought out and see what it touches.', 0); if (wide) setTimeout(() => { if (space === 'sky' && mode === 'map') $('#skyQ').focus({ preventScroll: true }); }, 600); return; }
   if (greeted[space]) return; greeted[space] = 1;
-  say({ galaxy: 'your own sky. nothing leaves it unless you send it.', nebulae: 'small rooms. glance at one, join it, or found your own.', sky: 'what your thought touched. select a star to open it.' }[space], 6000);
+  say({ galaxy: 'your own sky. nothing leaves it unless you send it.', nebulae: 'small rooms. glance at one, join it, or found your own.' + (store.profile.samples !== false ? ' rooms marked sample hold seeded voices.' : ''), sky: 'what your thought touched. select a star to open it.' }[space], 6000);
 }
 async function goSpace(name) {
   if (mode === 'drift') return;
@@ -1050,7 +1067,7 @@ function drawLabels(ts) {
     const a = clusterAlpha(c, ts) * mapA; if (a < .02) continue;
     const sx = X(c.x), sy = Y(c.y), rx = c.r * cam.z, ry = c.r * .62 * cam.z;
     if (sx + rx < -260 || sx - rx > W + 260 || sy + ry < -80 || sy - ry > H + 80) continue;
-    const name = cname(c), fs = wide ? 12 : 11, sp = wide ? '1.1px' : '.5px';
+    const hot = hoverC === c || selCluster === c, name = cname(c) + (c.demo && (hot || zk > 0) ? ' · sample' : ''), fs = wide ? 12 : 11, sp = wide ? '1.1px' : '.5px';
     ctx.font = `${fs}px ${FONT}`; ls(sp); const nw = ctx.measureText(name).width;
     let qa = 0;
     if (c.q && zk > 0) { ctx.font = `11px ${FONT}`; ls('.3px'); if (ctx.measureText(c.q).width < Math.min(W - 24, rx * 2.4 + 60)) qa = zk; }
@@ -1058,7 +1075,6 @@ function drawLabels(ts) {
     const ny = sy - ry - 16 - qa * 18, box = { c, x0: lx - nw / 2 - 12, x1: lx + nw / 2 + 12, y0: ny - 13, y1: ny + 13 };
     if (labelBoxes.some(o => o.x0 < box.x1 && o.x1 > box.x0 && o.y0 < box.y1 && o.y1 > box.y0)) continue;
     labelBoxes.push(box);
-    const hot = hoverC === c || selCluster === c;
     ctx.textAlign = 'center'; ctx.font = `${c.name ? '' : 'italic '}${fs}px ${FONT}`; ls(sp);
     ctx.fillStyle = ink((c.name ? (hot ? 1 : .88) : (hot ? .9 : .66)) * a); ctx.fillText(name, lx, ny);
     if (hot) { ctx.strokeStyle = ink(.5 * a); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(lx - nw / 2, Math.round(ny + 10) + .5); ctx.lineTo(lx + nw / 2, Math.round(ny + 10) + .5); ctx.stroke(); }
@@ -1089,8 +1105,9 @@ function drawDrift(ts) {
   ctx.globalAlpha = 1;
 }
 
-const who = t => (t.mine ? 'you' : t.alias || 'someone');
-const tipSmall = t => (t.kind === 'result' ? (t.src === 'launch' ? 'opens in a new tab' : t.src) : cname(clusters.get(t.c)) + (t.mine && t.kind === 'room' ? ' · yours' : ''));
+const sample = t => t.kind === 'room' && /^s\d+$/.test(t.id);   // a seeded voice in a sample room
+const who = t => (t.mine ? 'you' : sample(t) ? 'a sample voice' : t.alias || 'someone');
+const tipSmall = t => (t.kind === 'result' ? (t.src === 'launch' ? 'opens in a new tab' : t.src) : cname(clusters.get(t.c)) + (t.mine && t.kind === 'room' ? ' · yours' : sample(t) ? ' · sample' : ''));
 let tipFor = null, frameN = 0, last = 0;
 function updateTip() {
   const t = mode === 'map' && !drag ? (kb || hover) : null;
@@ -1535,8 +1552,10 @@ function renderSkyCluster(c) {
 
 /* ---------- composing & the drift ---------- */
 function autosize() { mind.style.height = 'auto'; mind.style.height = mind.scrollHeight + 'px'; goBtn.classList.toggle('on', !!mind.value.trim()); }
+let exN = Math.floor(Math.random() * EXAMPLES.length);
+const nextExample = () => { mind.placeholder = 'try: ' + EXAMPLES[exN++ % EXAMPLES.length]; };
 function openCompose(target) {
-  composeTarget = target || null;
+  composeTarget = target || null; nextExample();
   $('#target').hidden = !composeTarget; if (composeTarget) $('#targetName').textContent = cname(composeTarget);
   closePanel(); closeMenu(); hush(); linkFrom = null; spaceToken++; setMode('compose');
   landing.classList.remove('leaving', 'first'); landing.inert = false; care.hidden = true;
@@ -1588,7 +1607,8 @@ async function place(text, target) {
 mind.addEventListener('input', autosize);
 mind.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); submitMind(false); } });
 $('#compose').addEventListener('submit', e => { e.preventDefault(); submitMind(false); });
-$('#wander').addEventListener('click', () => (visited ? leaveCompose() : goSpace(spaces.galaxy.thoughts.length ? 'galaxy' : 'nebulae')));
+for (const b of document.querySelectorAll('#wander [data-go]')) b.addEventListener('click', () => goSpace(b.dataset.go));
+$('#newHere').addEventListener('click', () => openAbout());
 $('#targetClear').addEventListener('click', () => { composeTarget = null; $('#target').hidden = true; mind.focus(); });
 $('#newBtn').addEventListener('click', () => openCompose());
 $('#zoomIn').addEventListener('click', () => zoomBy(1.5));
@@ -2025,6 +2045,7 @@ window.addEventListener('resize', resize);
 resize();
 { const l = landingCam(); Object.assign(cam, l); Object.assign(goal, l); vc.x = vcT.x; vc.y = vcT.y; }
 setMode('landing'); syncNav(); autosize(); renderYou();
+if (spaces.galaxy.thoughts.length) nextExample();   // a first visit keeps "start anywhere"; a return visit gets an example
 requestAnimationFrame(frame);
 cloudInit();
 if (!matchMedia('(pointer: coarse)').matches) setTimeout(() => { if (mode === 'landing') mind.focus({ preventScroll: true }); }, 400);
