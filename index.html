@@ -241,6 +241,12 @@ dialog.about { width: min(620px, calc(100% - 32px)); }
 @media (max-width: 720px) { #panel .row.stick { position: sticky; bottom: 0; z-index: 1; background: rgb(24, 24, 25); padding: 10px 0; } }   /* settle stays in reach on a phone */
 body[data-space="sky"] #pullBtn { display: none; }   /* search results have no ends to lean toward */
 .avatar { width: 14px; height: 14px; border-radius: 50%; vertical-align: -2px; margin-right: 6px; filter: grayscale(1); }
+.thought.small { font-size: 13px; color: var(--mid); }
+.list li.reply { margin-left: 18px; }
+.list li.reply > button::before { content: '↳ '; color: var(--dim); }
+.p-head .step { display: inline-flex; align-items: center; gap: 2px; }
+.p-head .step .step { gap: 0; }
+@media (max-width: 720px) { #panel { touch-action: pan-y; } }   /* horizontal swipes on the sheet step between stars */
 #youBtn .avatar { width: 16px; height: 16px; border-radius: 50%; vertical-align: -3px; margin-right: 7px; filter: grayscale(1); }
 .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
@@ -781,6 +787,13 @@ function layout(c, snap) {
   if (c.kind === 'galaxy') c.auto = gatherWords(c).slice(0, 2).join(' · ');   // an unnamed constellation is called by what it gathers around
   c.r = clamp(150 + m.length * 9, 160, 290);
   const pts = m.map(t => ({ t, x: c.x + xOf(t, c) * c.r * .82 + (rnd(t.id + 'x') - .5) * 14, y: c.y + t.oy * c.r * .46 }));
+  // replies sit just beside what they answer, fanned out below it (a reply is always newer than its parent, so parents go first)
+  const at = new Map(pts.map(p => [p.t.id, p]));
+  for (const p of [...pts].sort((a, b) => a.t.created - b.t.created)) {
+    const par = p.t.re && at.get(p.t.re); if (!par) continue;
+    const sibs = m.filter(o => o.re === p.t.re).sort((a, b) => a.created - b.created), k = sibs.indexOf(p.t), a = Math.PI / 2 + (k - (sibs.length - 1) / 2) * .75;
+    p.x = par.x + Math.cos(a) * 38; p.y = par.y + Math.sin(a) * 30;
+  }
   for (let it = 0; it < 28; it++) for (let i = 0; i < pts.length; i++) for (let j = i + 1; j < pts.length; j++) {
     const a = pts[i], b = pts[j], dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy);
     if (d < 36) { const push = (36 - d) / 2, s = dy === 0 ? ((i + j) % 2 ? 1 : -1) : Math.sign(dy); a.y -= s * push; b.y += s * push; }
@@ -1084,7 +1097,8 @@ function drawStars(ts) {
     const sx = X(t.x), sy = Y(t.y); if (sx < -60 || sx > W + 60 || sy < -60 || sy > H + 60) continue;
     const ca = clusterAlpha(clusters.get(t.c), ts) * mapA; if (ca < .01) continue;
     const b = bright(t, now), tw = 1 + .14 * Math.sin(t1 * t.tws + t.twp);
-    const own = t.kind === 'own', g = t.glow + (!t.res && res[t.id] ? .45 : 0) + (own ? .16 : 0), r = ((own ? 1.3 : .9) + b * 1.8) * ss, R = (4 + b * 7 + g * 26) * ss;
+    const own = t.kind === 'own', rep = !!(t.re && byId.has(t.re)), rk = rep ? .6 : 1;   // a reply is a smaller, quieter star than a contribution
+    const g = (t.glow + (!t.res && res[t.id] ? .45 : 0) + (own ? .16 : 0)) * (rep ? .35 : 1), r = ((own ? 1.3 : .9) + b * 1.8) * ss * rk, R = (4 + b * 7 + g * 26) * ss * rk;
     if (t.src === 'launch') {   // a doorway out, drawn hollow
       ctx.globalAlpha = .75 * ca; ctx.beginPath(); ctx.arc(sx, sy, 3.2 * ss, 0, TAU); ctx.stroke();
     } else {
@@ -1320,6 +1334,14 @@ document.addEventListener('keydown', e => {
 });
 
 /* ---------- panel: shared pieces ---------- */
+{ let sw = null;   // a sideways swipe on the panel moves to the previous or next star
+  panel.addEventListener('pointerdown', e => { sw = e.pointerType === 'touch' && sel && !e.target.closest('input, textarea, select') ? { x: e.clientX, y: e.clientY } : null; });
+  panel.addEventListener('pointerup', e => {
+    if (!sw || !sel) return; const dx = e.clientX - sw.x, dy = e.clientY - sw.y; sw = null;
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) step(sel, dx < 0 ? 1 : -1);
+  });
+  panel.addEventListener('pointercancel', () => { sw = null; });
+}
 function openPanel() {
   panelOpen = true; panel.classList.add('open'); panel.setAttribute('aria-hidden', 'false');
   body.classList.toggle('sheet', !wide); body.classList.add('panel'); setViewCenter();
@@ -1341,7 +1363,18 @@ function refreshPanel(force) {
   else if (selCluster) { if (clusters.get(selCluster.id) === selCluster) renderCluster(selCluster); else closePanel(); }
 }
 const closeBtn = () => el('button', { class: 'x', type: 'button', 'aria-label': 'close', onclick: () => closePanel(true) }, '×');
-const head = (left) => el('div', { class: 'p-head' }, left, closeBtn());
+// stepping between the stars of one group, in the order its panel lists them (‹ ›, arrow-free, and a swipe on phones)
+const roomOrder = c => {   // contributions from one end to the other, each followed by its replies
+  const m = members(c), top = m.filter(t => !t.re || !m.includes(byId.get(t.re))).sort((a, b) => a.stance - b.stance), out = [];
+  const add = t => { out.push(t); m.filter(k => k.re === t.id).sort((a, b) => a.created - b.created).forEach(add); };
+  top.forEach(add); return out;
+};
+const siblings = t => { const c = clusters.get(t.c); return !c ? [t] : c.kind === 'room' ? roomOrder(c) : c.kind === 'galaxy' ? members(c).sort((a, b) => a.created - b.created) : members(c); };
+function step(t, d) { const s = siblings(t), i = s.indexOf(t); if (s.length > 1 && i >= 0) selectThought(s[(i + d + s.length) % s.length], { keepFocus: true }); }
+const stepper = t => (siblings(t).length > 1 ? el('span', { class: 'step' },
+  el('button', { class: 'x', type: 'button', 'aria-label': 'previous star', onclick: () => step(t, -1) }, '‹'),
+  el('button', { class: 'x', type: 'button', 'aria-label': 'next star', onclick: () => step(t, 1) }, '›')) : null);
+const head = (left, t) => el('div', { class: 'p-head' }, left, el('span', { class: 'step' }, t ? stepper(t) : null, closeBtn()));
 const crumb = c => el('button', { class: 'crumb', type: 'button', onclick: () => openCluster(c) }, cname(c));
 function stanceWords(s, c) {
   const a = Math.abs(s); if (a < .1) return 'sits in the grey middle';
@@ -1499,7 +1532,7 @@ function removeOwn(t) {
 const shareTo = (t, room) => Promise.resolve(goSpace('nebulae')).then(() => { if (space === 'nebulae' && mode === 'map') place(t.text, room); });
 
 function renderOwn(t, st) {
-  const c = clusters.get(t.c), n = [head(crumb(c))];
+  const c = clusters.get(t.c), n = [head(crumb(c), t)];
   n.push(el('p', { class: 'meta' }, 'you · ' + ago(t.created) + (t.refines ? ' · refined' : '')));
   if (st.refine) { refineForm(t, c, n); return setPanel(n, 'refining a thought', true); }
   n.push(el('p', { class: 'thought' }, t.text));
@@ -1549,10 +1582,11 @@ function renderConstellation(c, st) {
 
 /* ---------- nebulae ---------- */
 function renderRoomThought(t, st) {
-  const c = clusters.get(t.c), parent = t.re && byId.get(t.re), kids = thoughts.filter(o => o.re === t.id).sort((a, b) => a.created - b.created), member = isMember(c), n = [head(crumb(c))];
+  const c = clusters.get(t.c), parent = t.re && byId.get(t.re), kids = thoughts.filter(o => o.re === t.id).sort((a, b) => a.created - b.created), member = isMember(c), n = [head(crumb(c), t)];
   n.push(el('p', { class: 'meta' }, face(t), who(t) + ' · ' + ago(t.created) + (t.refines ? ' · refined' : '') + (t.mine ? ` · shown as “${t.alias || shownAs()}”` : '')));
   if (st.refine) { refineForm(t, c, n); return setPanel(n, 'refining a thought', true); }
-  n.push(el('p', { class: 'thought' }, t.text), settledLine(t));
+  if (parent) n.push(el('p', { class: 'meta' }, 'a reply to ', btn('“' + snip(parent.text, 48) + '”', () => selectThought(parent, { keepFocus: true }), 'link')));
+  n.push(el('p', { class: parent ? 'thought small' : 'thought' }, t.text), settledLine(t));
   n.push(el('div', { class: 'sec' }, el('h3', null, 'where it sits'), spectrumView(c, t.stance), el('p', { class: 'where' }, stanceWords(t.stance, c))));
   // one main action (reply, or refine for your own), then the rest
   const main = el('div', { class: 'row' }), more = el('div', { class: 'row' });
@@ -1570,7 +1604,6 @@ function renderRoomThought(t, st) {
   if (!t.mine && isRes(t)) n.push(el('p', { class: 'note' }, 'it glows a little more now. nobody sees a number.'));
   n.push(...linksBlock(t, st));
 
-  if (parent) n.push(el('div', { class: 'sec' }, el('h3', null, 'in reply to'), el('ul', { class: 'list' }, thoughtItem(parent))));
   if (kids.length) n.push(el('div', { class: 'sec' }, el('h3', null, 'replies'), el('ul', { class: 'list' }, kids.map(k => thoughtItem(k)))));
   if (st.reply) {
     const ta = el('textarea', { id: 'reply', rows: '4', maxlength: '600', placeholder: "you don't have to be sure." }), note = el('div');
@@ -1595,7 +1628,7 @@ function renderRoomThought(t, st) {
   setPanel(n, 'a thought in ' + cname(c), st.reply || st.rm || st.linking);
 }
 function renderRoom(c, st) {
-  const m = members(c).sort((a, b) => a.stance - b.stance), member = isMember(c);
+  const m = roomOrder(c), member = isMember(c);
   const n = [head(el('span', { class: 'meta' }, 'nebula · ' + (c.demo ? 'sample room' : c.remote ? 'shared room' : 'this browser only')))];
   n.push(el('h2', null, cname(c)), el('p', { class: 'question' }, c.q || 'no guiding question yet.'));
   n.push(el('p', { class: 'meta' }, (c.founder === 'you' ? 'founded by you' : c.demo ? 'founded by someone else' : 'founded by ' + (c.ownerAlias || 'someone')) + ' · ' + (member ? "you're a member" : "you're glancing")));
@@ -1630,14 +1663,15 @@ function renderRoom(c, st) {
       el('p', { class: 'note' }, member ? 'it stays pending until more members weigh in.' : 'members decide this.')));
   }
   n.push(el('div', { class: 'sec' }, el('h3', null, m.length ? `thoughts, from “${c.poles[0]}” to “${c.poles[1]}”` : 'thoughts'),
-    m.length ? el('ul', { class: 'list' }, m.map(t => thoughtItem(t))) : el('p', { class: 'note' }, 'nothing here yet. the first thought will land in the middle.')));
+    m.length ? el('ul', { class: 'list' }, m.map(t => { const li = thoughtItem(t); if (t.re && byId.has(t.re)) li.classList.add('reply'); return li; }))   // replies indented under what they answer
+      : el('p', { class: 'note' }, 'nothing here yet. the first thought will land in the middle.')));
   setPanel(n, 'nebula: ' + cname(c), st.propose || st.link);
 }
 const inviteLink = c => location.href.split('#')[0] + '#room-' + c.remote;
 
 /* ---------- open sky ---------- */
 function renderResult(t) {
-  const c = clusters.get(t.c), launch = t.src === 'launch', n = [head(crumb(c))];
+  const c = clusters.get(t.c), launch = t.src === 'launch', n = [head(crumb(c), t)];
   if (t.src === 'suggest') {   // a starting point, not a page: its action is to search from it
     n.push(el('p', { class: 'meta' }, 'a place to start' + (t.meta ? ' · ' + t.meta : '')), el('p', { class: 'thought' }, t.text),
       el('div', { class: 'row' }, btn('search the open sky for this', () => runSky(t.text), 'b solid')),
