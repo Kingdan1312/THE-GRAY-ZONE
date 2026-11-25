@@ -373,6 +373,8 @@ dialog#you { width: min(460px, calc(100% - 32px)); }
   <div class="zoom">
     <button class="b solid" id="newBtn" type="button">+ thought</button>
     <button class="b" id="pullBtn" type="button" aria-pressed="false" title="show which end each thought leans toward">pulls</button>
+    <button class="b" id="spreadBtn" type="button" aria-pressed="false" title="give the stars more room">spread</button>
+    <button class="link" id="resetBtn" type="button" hidden>reset layout</button>
   </div>
   <span class="readout" id="readout" aria-hidden="true"></span>
   <div class="zoom">
@@ -668,7 +670,7 @@ const KEY = 'grayzone.v2';
 const blank = () => ({ v: 2, first: Date.now(), profile: { alias: '', hidden: false, samples: true },
   galaxy: { clusters: [], thoughts: [] },
   rooms: { clusters: [], thoughts: [], joined: {}, resonated: {}, votes: {}, proposals: [], links: {} },
-  sky: { sources: {}, group: 'theme', saved: [], recent: [] } });
+  sky: { sources: {}, group: 'theme', saved: [], recent: [] }, view: { pos: {} } });
 let store = blank(), storageOK = true, legacy = null;
 try {
   const raw = localStorage.getItem(KEY), old = raw ? null : localStorage.getItem('grayzone.v1');
@@ -676,13 +678,14 @@ try {
   try {
     if (raw) {
       const d = JSON.parse(raw);
-      if (d && d.v === 2) { for (const k of ['profile', 'galaxy', 'rooms', 'sky']) if (d[k] && typeof d[k] === 'object') Object.assign(store[k], d[k]); if (typeof d.first === 'number') store.first = d.first; }
+      if (d && d.v === 2) { for (const k of ['profile', 'galaxy', 'rooms', 'sky', 'view']) if (d[k] && typeof d[k] === 'object') Object.assign(store[k], d[k]); if (typeof d.first === 'number') store.first = d.first; }
     } else if (old) { const d = JSON.parse(old); if (d && Array.isArray(d.thoughts)) { legacy = d; if (typeof d.first === 'number') store.first = d.first; } }
   } catch (e) { /* unreadable save: start clean */ }
 } catch (e) { storageOK = false; }
 function fixStore(s) {
   const A = (o, k) => { if (!Array.isArray(o[k])) o[k] = []; }, O = (o, k) => { if (!o[k] || typeof o[k] !== 'object' || Array.isArray(o[k])) o[k] = {}; };
-  for (const k of ['profile', 'galaxy', 'rooms', 'sky']) O(s, k);
+  for (const k of ['profile', 'galaxy', 'rooms', 'sky', 'view']) O(s, k);
+  O(s.view, 'pos');
   A(s.galaxy, 'clusters'); A(s.galaxy, 'thoughts'); A(s.rooms, 'clusters'); A(s.rooms, 'thoughts'); A(s.rooms, 'proposals'); A(s.sky, 'saved'); A(s.sky, 'recent');
   O(s.rooms, 'joined'); O(s.rooms, 'resonated'); O(s.rooms, 'votes'); O(s.rooms, 'links'); O(s.sky, 'sources');
   return s;
@@ -785,20 +788,36 @@ const xOf = (t, c) => (c.poles ? t.stance : t.spread);
 function layout(c, snap) {
   const m = members(c); c.n = m.length;
   if (c.kind === 'galaxy') c.auto = gatherWords(c).slice(0, 2).join(' · ');   // an unnamed constellation is called by what it gathers around
-  c.r = clamp(150 + m.length * 9, 160, 290);
-  const pts = m.map(t => ({ t, x: c.x + xOf(t, c) * c.r * .82 + (rnd(t.id + 'x') - .5) * 14, y: c.y + t.oy * c.r * .46 }));
+  // an orderly sky: thoughts with two ends sit by stance (x) in rows by arrival (y); the rest wind out on a golden-angle spiral.
+  // pulls pushes leaning thoughts out toward their end; spread gives everyone more room. (read from the store: this runs at boot too)
+  const pulls = store.profile.pulls === true && !!c.poles, spread = store.profile.spread === true, pos = store.view.pos;
+  c.r = clamp(150 + m.length * 9, 160, 290) * (spread ? 1.2 : 1);
+  const top = m.filter(t => !t.re || !m.includes(byId.get(t.re))).sort((a, b) => a.created - b.created), rank = new Map(top.map((t, i) => [t, i])), nT = top.length;
+  const ex = s => (pulls ? Math.sign(s) * Math.pow(Math.abs(s), .6) : s);
+  const pts = m.map(t => {
+    const i = rank.has(t) ? rank.get(t) : 0, jit = (rnd(t.id + 'x') - .5) * 10;
+    if (c.poles) return { t, x: c.x + ex(t.stance) * c.r * (pulls ? .9 : .82) + jit, y: c.y + (nT < 2 ? 0 : (i / (nT - 1) - .5) * 2 * c.r * (spread ? .5 : .42) * (pulls ? .8 : 1)) };
+    const a = i * 2.39996 + rnd(c.id + 'a') * TAU, rr = c.r * .78 * Math.sqrt((i + .5) / Math.max(1, nT));
+    return { t, x: c.x + Math.cos(a) * rr + jit, y: c.y + Math.sin(a) * rr * .6 };
+  });
+  for (const p of pts) { const o = pos[p.t.id]; if (o && p.t.kind !== 'result') { p.x = c.x + o[0]; p.y = c.y + o[1]; p.fixed = true; } }   // a spot you dragged it to wins
   // replies sit just beside what they answer, fanned out below it (a reply is always newer than its parent, so parents go first)
   const at = new Map(pts.map(p => [p.t.id, p]));
   for (const p of [...pts].sort((a, b) => a.t.created - b.t.created)) {
-    const par = p.t.re && at.get(p.t.re); if (!par) continue;
+    const par = p.t.re && at.get(p.t.re); if (!par || p.fixed) continue;
     const sibs = m.filter(o => o.re === p.t.re).sort((a, b) => a.created - b.created), k = sibs.indexOf(p.t), a = Math.PI / 2 + (k - (sibs.length - 1) / 2) * .75;
     p.x = par.x + Math.cos(a) * 38; p.y = par.y + Math.sin(a) * 30;
   }
+  const minD = spread ? 58 : 36;   // a final nudge so no two stars sit on top of each other (a dragged star holds its place)
   for (let it = 0; it < 28; it++) for (let i = 0; i < pts.length; i++) for (let j = i + 1; j < pts.length; j++) {
     const a = pts[i], b = pts[j], dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy);
-    if (d < 36) { const push = (36 - d) / 2, s = dy === 0 ? ((i + j) % 2 ? 1 : -1) : Math.sign(dy); a.y -= s * push; b.y += s * push; }
+    if (d < minD && !(a.fixed && b.fixed)) {
+      const push = minD - d, s = dy === 0 ? ((i + j) % 2 ? 1 : -1) : Math.sign(dy), ux = d ? dx / d : 0, uy = d ? dy / d : s;
+      const wa = a.fixed ? 0 : b.fixed ? 1 : .5, wb = 1 - wa;
+      a.x -= ux * push * wa * .5; a.y -= uy * push * wa; b.x += ux * push * wb * .5; b.y += uy * push * wb;
+    }
   }
-  for (const p of pts) { p.t.tx = p.x; p.t.ty = clamp(p.y, c.y - c.r * .56, c.y + c.r * .56); if (snap) { p.t.x = p.t.tx; p.t.y = p.t.ty; } }
+  for (const p of pts) { p.t.tx = p.x; p.t.ty = p.fixed ? p.y : clamp(p.y, c.y - c.r * .62, c.y + c.r * .62); if (snap) { p.t.x = p.t.tx; p.t.y = p.t.ty; } }
 }
 function pickOy(c, sx, near, self) {
   const m = members(c).filter(t => t !== self), r = clamp(150 + (m.length + 1) * 9, 160, 290), x = c.x + sx * r * .82;
@@ -883,6 +902,7 @@ function syncNav() {
   body.dataset.space = space;
   for (const b of document.querySelectorAll('.scales button')) b.setAttribute('aria-pressed', String(b.dataset.space === space));
   $('#menuBtn').textContent = wide ? { galaxy: 'constellations', nebulae: 'nebulae', sky: 'searches' }[space] : 'list';
+  syncPulls();
 }
 
 function viewSize() {
@@ -1097,7 +1117,7 @@ function drawStars(ts) {
     const sx = X(t.x), sy = Y(t.y); if (sx < -60 || sx > W + 60 || sy < -60 || sy > H + 60) continue;
     const ca = clusterAlpha(clusters.get(t.c), ts) * mapA; if (ca < .01) continue;
     const b = bright(t, now), tw = 1 + .14 * Math.sin(t1 * t.tws + t.twp);
-    const own = t.kind === 'own', rep = !!(t.re && byId.has(t.re)), rk = rep ? .6 : 1;   // a reply is a smaller, quieter star than a contribution
+    const own = t.kind === 'own', rep = !!(t.re && byId.has(t.re)), rk = (rep ? .6 : 1) * (1 + .55 * (t.lift || 0));   // a reply is a smaller, quieter star than a contribution
     const g = (t.glow + (!t.res && res[t.id] ? .45 : 0) + (own ? .16 : 0)) * (rep ? .35 : 1), r = ((own ? 1.3 : .9) + b * 1.8) * ss * rk, R = (4 + b * 7 + g * 26) * ss * rk;
     if (t.src === 'launch') {   // a doorway out, drawn hollow
       ctx.globalAlpha = .75 * ca; ctx.beginPath(); ctx.arc(sx, sy, 3.2 * ss, 0, TAU); ctx.stroke();
@@ -1195,7 +1215,11 @@ function frame(ts) {
   vc.x += (vcT.x - vc.x) * kv; vc.y += (vcT.y - vc.y) * kv;
   mapA += (mapAT - mapA) * (reduced ? 1 : 1 - Math.exp(-dt * mapRate));
   const ks = reduced ? 1 : 1 - Math.exp(-dt * 3.2);
-  for (const t of thoughts) if (!t.held) { t.x += (t.tx - t.x) * ks; t.y += (t.ty - t.y) * ks; }
+  const kl = reduced ? 1 : 1 - Math.exp(-dt * 10), lifted = mode === 'map' ? kb || hover : null;
+  for (const t of thoughts) {
+    if (!t.held) { t.x += (t.tx - t.x) * ks; t.y += (t.ty - t.y) * ks; }
+    t.lift = (t.lift || 0) + ((t === lifted ? 1 : 0) - (t.lift || 0)) * kl;   // the star under the pointer (or the keys) rises a little
+  }
 
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.fillStyle = '#1f1f20'; ctx.fillRect(0, 0, W, H);
@@ -1230,7 +1254,10 @@ canvas.addEventListener('pointerdown', e => {
   ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
   try { canvas.setPointerCapture(e.pointerId); } catch (_) {}
   flyToken++;
-  if (ptrs.size === 1) drag = { sx: e.clientX, sy: e.clientY, moved: false, touch: e.pointerType === 'touch' };
+  if (ptrs.size === 1) {
+    drag = { sx: e.clientX, sy: e.clientY, moved: false, touch: e.pointerType === 'touch' };
+    if (!drag.touch) { const st = pick(e.clientX, e.clientY, 16); if (st && st.kind !== 'result' && !st.held) drag.star = st; }   // a mouse on a star moves that star
+  }
   else if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch = { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, z: goal.z, mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2 }; if (drag) drag.moved = true; }
 });
 canvas.addEventListener('pointermove', e => {
@@ -1244,7 +1271,8 @@ canvas.addEventListener('pointermove', e => {
   const dx = e.clientX - p.x, dy = e.clientY - p.y; p.x = e.clientX; p.y = e.clientY;
   if (ptrs.size === 1 && drag) {
     if (!drag.moved && Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) > 5) { drag.moved = true; canvas.classList.add('dragging'); hover = null; }
-    if (drag.moved) { goal.x -= dx / cam.z; goal.y -= dy / cam.z; cam.x = goal.x; cam.y = goal.y; }
+    if (drag.moved && drag.star) { const t = drag.star; t.x = t.tx = (e.clientX - vc.x) / cam.z + cam.x; t.y = t.ty = (e.clientY - vc.y) / cam.z + cam.y; }
+    else if (drag.moved) { goal.x -= dx / cam.z; goal.y -= dy / cam.z; cam.x = goal.x; cam.y = goal.y; }
   } else if (ptrs.size === 2 && pinch) {
     const [a, b] = [...ptrs.values()], d = Math.hypot(a.x - b.x, a.y - b.y), mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
     goal.x -= (mx - pinch.mx) / cam.z; goal.y -= (my - pinch.my) / cam.z; pinch.mx = mx; pinch.my = my;
@@ -1256,7 +1284,10 @@ function pointerEnd(e) {
   if (ptrs.size === 0) {
     canvas.classList.remove('dragging');
     const d = drag; drag = pinch = null;
-    if (d && !d.moved && e.type === 'pointerup') click(e.clientX, e.clientY, d.touch);
+    if (d && d.moved && d.star && byId.get(d.star.id) === d.star) {   // keep the spot you dragged it to, only for you
+      const t = d.star, c = clusters.get(t.c);
+      if (c) { store.view.pos[t.id] = [Math.round(t.tx - c.x), Math.round(t.ty - c.y)]; save(); layout(c); syncPulls(); }
+    } else if (d && !d.moved && e.type === 'pointerup') click(e.clientX, e.clientY, d.touch);
   } else { pinch = null; drag = { sx: 0, sy: 0, moved: true }; }
 }
 canvas.addEventListener('pointerup', pointerEnd);
@@ -1326,6 +1357,7 @@ document.addEventListener('keydown', e => {
   if (ARROWS[e.key] && a !== canvas && (a === document.body || panel.contains(a))) { canvas.focus({ preventScroll: true }); return mapArrow(e, ARROWS[e.key]); }
   if (e.key === 'n') { e.preventDefault(); openComposer(); }
   else if (e.key === 'p' && space !== 'sky') togglePulls();
+  else if (e.key === 's') toggleSpread();
   else if (e.key === '?') openAbout();
   else if (e.key === '0') showAll();
   else if (e.key === '1') goSpace('galaxy'); else if (e.key === '2') goSpace('nebulae'); else if (e.key === '3') goSpace('sky');
@@ -1745,8 +1777,17 @@ function submitMind(cleared) {
   care.hidden = true; mind.value = ''; autosize(); mind.blur();
   place(text, composeTarget);
 }
+function placeHere(text, c, sp) {   // a small addition lands right where it belongs: a quick pop and a pulse, no journey
+  closePanel(); hush(); visited = true;
+  const now = Date.now(), id = c.remote ? 'f_' + cloudNewId(c) : uid('u');
+  const t = addThought({ id, c: c.id, kind: sp === 'galaxy' ? 'own' : 'room', text, stance: 0, settled: .2, created: now, touched: now, mine: true, alias: shownAs(), oy: 0 });
+  if (c.remote) t.pending = true;
+  t.oy = pickOy(c, xOf(t, c), null, t); layout(c); t.x = t.tx; t.y = t.ty; t.lift = 2.4; t.pulse = performance.now(); persist(t);
+  selectThought(t); say(['placed in ', el('b', null, cname(c))], 3000);
+}
 async function place(text, target) {
   const sp = target && target.kind === 'room' ? 'nebulae' : 'galaxy';
+  if (target && space === sp && mode === 'map' && clusters.get(target.id) === target) return placeHere(text, target, sp);
   if (space !== sp) setSpace(sp);
   syncNav(); closePanel(); setMode('drift'); visited = true; hush(); spaceToken++;
   landing.classList.add('leaving'); landing.inert = true;
@@ -1760,17 +1801,17 @@ async function place(text, target) {
   drift = { t, from: { x: 0, y: 0 }, to: { x: t.tx, y: t.ty }, spawn: 0, line: 0, fade: 1, k: 0 };
 
   mapRate = 2.4; const l = landingCam(); flyTo(l.x, l.y, l.z, 500);
-  await tween(1300, k => { drift.spawn = easeOut(k); });            // the thought condenses into a dim star
+  await tween(700, k => { drift.spawn = easeOut(k); });             // the thought condenses into a dim star
   say(keywords.length ? keywords.join(' · ') : '· · ·', 0);          // what the system heard
-  await wait(1500);
-  mapAT = 1; await showAll(2200);                                    // the map opens around it
+  await wait(700);
+  mapAT = 1; await showAll(1300);                                    // the map opens around it
   if (fresh) c.born = performance.now();
-  await tween(1100, k => { drift.line = ease(k); });                 // a thin line finds where it belongs
+  await tween(700, k => { drift.line = ease(k); });                  // a thin line finds where it belongs
   say(fresh ? (clusters.size === 1 ? 'your first constellation forms.' : 'nothing close yet. a new constellation forms.') : ['moved to: ', el('b', null, cname(c))].concat(target ? [] : (w => (w.length ? ' · by ' + w.join(', ') : []))(sharedWords(t, c))), 0);
-  flyTo(c.x, c.y, fitCluster(c), 3200);                              // and the star drifts along it
-  await tween(3000, k => { const e = ease(k); drift.k = e; t.x = lerp(0, drift.to.x, e); t.y = lerp(0, drift.to.y, e); });
+  flyTo(c.x, c.y, fitCluster(c), 1900);                              // and the star drifts along it
+  await tween(1700, k => { const e = ease(k); drift.k = e; t.x = lerp(0, drift.to.x, e); t.y = lerp(0, drift.to.y, e); });
   t.held = false; t.pulse = performance.now();
-  await tween(900, k => { drift.fade = 1 - k; });
+  await tween(500, k => { drift.fade = 1 - k; });
   drift = null;
   setMode('map');
   if (byId.get(t.id) === t) { selectThought(t, { fly: false }); if (!wide) flyTo(c.x, c.y, fitCluster(c), 1000); }
@@ -1789,12 +1830,26 @@ $('#newBtn').addEventListener('click', () => openComposer());
 $('#zoomIn').addEventListener('click', () => zoomBy(1.5));
 $('#zoomOut').addEventListener('click', () => zoomBy(1 / 1.5));
 $('#zoomFit').addEventListener('click', () => showAll());
-const syncPulls = () => $('#pullBtn').setAttribute('aria-pressed', String(pullsOn()));
-function togglePulls() {
-  store.profile.pulls = !pullsOn(); save(); syncPulls();
-  say(pullsOn() ? 'pulls on. each thought leans toward the end it sits nearest.' : 'pulls off.');
+// view toggles: pulls (stars slide toward the end they lean to), spread (more room), and your own dragged arrangement
+function relayoutAll() { for (const n of ['galaxy', 'nebulae', 'sky']) inSpace(n, () => { for (const c of clusters.values()) layout(c); }); }
+const hasPos = () => thoughts.some(t => store.view.pos[t.id]);
+function syncPulls() {
+  $('#pullBtn').setAttribute('aria-pressed', String(pullsOn())); $('#spreadBtn').setAttribute('aria-pressed', String(store.profile.spread === true));
+  $('#resetBtn').hidden = !hasPos();
 }
-$('#pullBtn').addEventListener('click', togglePulls); syncPulls();
+function togglePulls() {
+  store.profile.pulls = !pullsOn(); save(); relayoutAll(); syncPulls();
+  say(pullsOn() ? 'pulls on. each thought drifts toward the end it leans to.' : 'pulls off.');
+}
+function toggleSpread() {
+  store.profile.spread = store.profile.spread !== true; save(); relayoutAll(); syncPulls();
+  say(store.profile.spread ? 'spread out. more room between the stars.' : 'drawn back together.');
+}
+function resetLayout() {
+  for (const t of thoughts) delete store.view.pos[t.id];
+  save(); for (const c of clusters.values()) layout(c); syncPulls(); say('back to where they settle on their own.');
+}
+$('#pullBtn').addEventListener('click', togglePulls); $('#spreadBtn').addEventListener('click', toggleSpread); $('#resetBtn').addEventListener('click', resetLayout); syncPulls();
 for (const b of document.querySelectorAll('.scales button')) b.addEventListener('click', () => goSpace(b.dataset.space));
 
 /* ---------- the list menu ---------- */
