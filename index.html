@@ -114,12 +114,13 @@ form:focus-within .rule { background-size: 100% 100%; }
 .wander { align-self: flex-start; margin-top: 18px; font-size: 12px; }
 .spaces { align-self: flex-start; display: flex; align-items: baseline; gap: 8px; margin-top: -8px; font-size: 11px; color: var(--dim); white-space: nowrap; }
 .newhere { align-self: flex-start; font-size: 11px; margin-top: -4px; }
-.landing-x { position: absolute; top: -7px; right: -8px; }
+.landing .landing-x { position: absolute; top: -13px; right: -12px; width: 44px; height: 44px; font-size: 22px; color: var(--mid); transition: color .25s; }
+.landing .landing-x:hover { color: var(--ink); }
 .landing form { position: relative; }
 @media (max-width: 720px) {   /* bigger tap areas without moving the underlines */
   .wander, .spaces .link, .newhere { position: relative; }
   .wander::after, .spaces .link::after, .newhere::after { content: ''; position: absolute; inset: -9px -4px; }
-  .spaces { gap: 12px; margin-top: 4px; } .newhere { margin-top: 8px; } .landing .landing-x { top: -13px; right: -12px; width: 44px; height: 44px; } }
+  .spaces { gap: 12px; margin-top: 4px; } .newhere { margin-top: 8px; } }
 @keyframes rise { from { opacity: 0; transform: translateY(8px); filter: blur(4px); } to { opacity: 1; transform: none; filter: none; } }
 .landing.first .prompt { animation: rise 1.6s .5s both; }
 .landing.first #mind, .landing.first .rule { animation: rise 1.6s 1s both; }
@@ -1260,13 +1261,16 @@ function kbMove(dx, dy) {
   kb = best; ensureVisible(best);
   live.textContent = `${cname(clusters.get(best.c))}. ${snip(best.text, 160)}`;
 }
+const ARROWS = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+function mapArrow(e, dir) {
+  e.preventDefault(); canvas.classList.add('kb');
+  if (e.shiftKey) { flyToken++; goal.x += dir[0] * 90 / cam.z; goal.y += dir[1] * 90 / cam.z; } else kbMove(dir[0], dir[1]);
+}
 canvas.addEventListener('keydown', e => {
   if (mode !== 'map' || e.metaKey || e.ctrlKey || e.altKey) return;
-  const dir = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
-  if (dir) {
-    e.preventDefault(); canvas.classList.add('kb');
-    if (e.shiftKey) { flyToken++; goal.x += dir[0] * 90 / cam.z; goal.y += dir[1] * 90 / cam.z; } else kbMove(dir[0], dir[1]);
-  } else if ((e.key === 'Enter' || e.key === ' ') && kb) { e.preventDefault(); const t = kb; selectThought(t); panel.focus({ preventScroll: true }); }
+  const dir = ARROWS[e.key];
+  if (dir) mapArrow(e, dir);
+  else if ((e.key === 'Enter' || e.key === ' ') && kb) { e.preventDefault(); const t = kb; selectThought(t); panel.focus({ preventScroll: true }); }
 });
 document.addEventListener('keydown', e => {
   const a = document.activeElement, typing = a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName);
@@ -1281,6 +1285,8 @@ document.addEventListener('keydown', e => {
     return;
   }
   if (typing || e.metaKey || e.ctrlKey || e.altKey || mode !== 'map') return;
+  // a star opened into the panel takes focus with it; arrows still walk the map from there
+  if (ARROWS[e.key] && a !== canvas && (a === document.body || panel.contains(a))) { canvas.focus({ preventScroll: true }); return mapArrow(e, ARROWS[e.key]); }
   if (e.key === 'n') { e.preventDefault(); openCompose(); }
   else if (e.key === '?') openAbout();
   else if (e.key === '0') showAll();
