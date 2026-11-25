@@ -662,7 +662,7 @@ const KEY = 'grayzone.v2';
 const blank = () => ({ v: 2, first: Date.now(), profile: { alias: '', hidden: false, samples: true },
   galaxy: { clusters: [], thoughts: [] },
   rooms: { clusters: [], thoughts: [], joined: {}, resonated: {}, votes: {}, proposals: [], links: {} },
-  sky: { sources: {}, group: 'theme', saved: [] } });
+  sky: { sources: {}, group: 'theme', saved: [], recent: [] } });
 let store = blank(), storageOK = true, legacy = null;
 try {
   const raw = localStorage.getItem(KEY), old = raw ? null : localStorage.getItem('grayzone.v1');
@@ -677,7 +677,7 @@ try {
 function fixStore(s) {
   const A = (o, k) => { if (!Array.isArray(o[k])) o[k] = []; }, O = (o, k) => { if (!o[k] || typeof o[k] !== 'object' || Array.isArray(o[k])) o[k] = {}; };
   for (const k of ['profile', 'galaxy', 'rooms', 'sky']) O(s, k);
-  A(s.galaxy, 'clusters'); A(s.galaxy, 'thoughts'); A(s.rooms, 'clusters'); A(s.rooms, 'thoughts'); A(s.rooms, 'proposals'); A(s.sky, 'saved');
+  A(s.galaxy, 'clusters'); A(s.galaxy, 'thoughts'); A(s.rooms, 'clusters'); A(s.rooms, 'thoughts'); A(s.rooms, 'proposals'); A(s.sky, 'saved'); A(s.sky, 'recent');
   O(s.rooms, 'joined'); O(s.rooms, 'resonated'); O(s.rooms, 'votes'); O(s.rooms, 'links'); O(s.sky, 'sources');
   return s;
 }
@@ -686,7 +686,7 @@ fixStore(store);
    signed out, they belong to this browser (the guest store). the two never mix. nebulae state stays in this browser either way. */
 const UKEY = id => KEY + '.u.' + id;
 const acct = { uid: null, guest: null, unsub: null, timer: 0, dirty: false, loaded: false, big: false, tab: uid('t'), wait: 0 };
-const synced = (s = store) => ({ profile: s.profile, galaxy: s.galaxy, sky: { saved: s.sky.saved, sources: s.sky.sources, group: s.sky.group } });
+const synced = (s = store) => ({ profile: s.profile, galaxy: s.galaxy, sky: { saved: s.sky.saved, sources: s.sky.sources, group: s.sky.group, recent: s.sky.recent } });
 function save() {
   if (storageOK) {
     try {
@@ -940,7 +940,7 @@ const hush = () => { clearTimeout(sayTimer); captionEl.classList.remove('on'); }
 const greeted = {};
 function greet() {
   if (space === 'galaxy' && !thoughts.length) return say("your galaxy is empty. start with a question you keep circling, or something you're learning.", 0);
-  if (space === 'sky' && !thoughts.length) { say('send a thought out and see what it touches.', 0); if (wide) setTimeout(() => { if (space === 'sky' && mode === 'map') $('#skyQ').focus({ preventScroll: true }); }, 600); return; }
+  if (space === 'sky' && !sky.q) { say("start from something you've searched or thought about, or type above.", 0); if (wide) setTimeout(() => { if (space === 'sky' && mode === 'map') $('#skyQ').focus({ preventScroll: true }); }, 600); return; }
   if (greeted[space]) return; greeted[space] = 1;
   say({ galaxy: 'your own sky. nothing leaves it unless you send it.', nebulae: 'small rooms. glance at one, join it, or found your own.' + (store.profile.samples !== false ? ' rooms marked sample hold seeded voices.' : ''), sky: 'what your thought touched. select a star to open it.' }[space], 6000);
 }
@@ -948,13 +948,13 @@ async function goSpace(name) {
   if (mode === 'drift') return;
   const id = ++spaceToken; closeMenu(); linkFrom = null;
   if (mode !== 'map') {
-    landing.classList.add('leaving'); landing.inert = true; setMode('map'); setSpace(name); syncNav();
+    landing.classList.add('leaving'); landing.inert = true; setMode('map'); setSpace(name); syncNav(); freshSky();
     mapRate = 2.4; mapAT = 1; showAll(visited ? 1400 : 2800);
   } else {
     if (name === space) { showAll(); return; }
     closePanel(); hush(); mapRate = 9; mapAT = 0;
     await wait(360); if (id !== spaceToken) return;
-    setSpace(name); syncNav();
+    setSpace(name); syncNav(); freshSky();
     const f = fitAll(); flyToken++; cam.x = goal.x = f.x; cam.y = goal.y = f.y; cam.z = goal.z = f.z * .8;
     mapRate = 2.4; mapAT = 1; flyTo(f.x, f.y, f.z, 1500);
   }
@@ -1162,7 +1162,7 @@ const who = t => (t.mine ? 'you' : sample(t) ? 'a sample voice' : t.alias || 'so
 // a nebula thought's google photo: yours (unless your profile is hidden), or the one its author shared with it
 const faceOf = t => (t.kind !== 'room' ? '' : t.mine ? (!store.profile.hidden && cloud.user && cloud.user.photo) || '' : t.photo || '');
 const face = t => { const p = faceOf(t); return p ? el('img', { class: 'avatar', src: p, alt: '', referrerpolicy: 'no-referrer', onerror: e => e.target.remove() }) : null; };
-const tipSmall = t => (t.kind === 'result' ? (t.src === 'launch' ? 'opens in a new tab' : t.src) : cname(clusters.get(t.c)) + (t.mine && t.kind === 'room' ? ' · yours' : sample(t) ? ' · sample' : ''));
+const tipSmall = t => (t.kind === 'result' ? (t.src === 'launch' ? 'opens in a new tab' : t.src === 'suggest' ? 'search the open sky for this' : t.src) : cname(clusters.get(t.c)) + (t.mine && t.kind === 'room' ? ' · yours' : sample(t) ? ' · sample' : ''));
 let tipFor = null, frameN = 0, last = 0;
 function updateTip() {
   const t = mode === 'map' && !drag ? (kb || hover) : null;
@@ -1638,6 +1638,12 @@ const inviteLink = c => location.href.split('#')[0] + '#room-' + c.remote;
 /* ---------- open sky ---------- */
 function renderResult(t) {
   const c = clusters.get(t.c), launch = t.src === 'launch', n = [head(crumb(c))];
+  if (t.src === 'suggest') {   // a starting point, not a page: its action is to search from it
+    n.push(el('p', { class: 'meta' }, 'a place to start' + (t.meta ? ' · ' + t.meta : '')), el('p', { class: 'thought' }, t.text),
+      el('div', { class: 'row' }, btn('search the open sky for this', () => runSky(t.text), 'b solid')),
+      el('p', { class: 'note' }, 'it goes out to wikipedia, papers, books, hacker news and the archive.'));
+    return setPanel(n, 'a place to start');
+  }
   n.push(el('p', { class: 'meta' }, launch ? 'a doorway out' : t.src + (t.meta ? ' · ' + t.meta : '')));
   n.push(el('p', { class: 'thought' }, t.text));
   if (t.snippet) n.push(el('p', { class: 'notes' }, t.snippet));
@@ -1964,10 +1970,23 @@ function themeGroups(results, qStems) {   // gather results around the words the
   if (left.size) groups.push({ name: groups.length ? 'loose ends' : 'what came back', items: [...left].map(i => results[i]) });
   return groups;
 }
+function freshSky() { if (space === 'sky' && !sky.q) buildSky(); }   // the suggestions follow what you've written since
+function suggestGroups() {   // before any search, the open sky offers places to start from
+  const g = [], tip = (title, meta) => ({ title: String(title).slice(0, 160), meta: meta || '', src: 'suggest' });
+  const recent = store.sky.recent.filter(s => typeof s === 'string' && s.trim()).slice(0, 8);
+  if (recent.length) g.push({ name: 'recent searches', q: 'where you looked lately', items: recent.map(s => tip(s)) });
+  const own = [...spaces.galaxy.thoughts].sort((a, b) => b.touched - a.touched).slice(0, 6);
+  if (own.length) g.push({ name: 'from your galaxy', q: 'your own thoughts, sent outward', items: own.map(t => tip(t.text)) });
+  const rooms = [...spaces.nebulae.clusters.values()].filter(c => c.q).sort((a, b) => isMember(b) - isMember(a)).slice(0, 6);
+  if (rooms.length) g.push({ name: 'nebula questions', q: 'what the rooms keep circling', items: rooms.map(c => tip(c.q, cname(c))) });
+  if (!g.length) g.push({ name: 'places to start', items: EXAMPLES.slice(0, 6).map(e => tip(e)) });
+  return g;
+}
 function buildSky() {
   const q = sky.q, on = id => store.sky.sources[id] !== false;
   let groups;
-  if (store.sky.group === 'source') groups = SKY_SOURCES.map(s => ({ name: s.name, items: sky.results.filter(r => r.src === s.id) })).filter(g => g.items.length);
+  if (!q) groups = suggestGroups();
+  else if (store.sky.group === 'source') groups = SKY_SOURCES.map(s => ({ name: s.name, items: sky.results.filter(r => r.src === s.id) })).filter(g => g.items.length);
   else groups = themeGroups(sky.results, new Set(terms(q + ' ' + sky.text).keys()));
   groups = groups.slice(0, 7);
   const dq = sky.text && sky.text !== q && sidesOf(sky.text) ? sky.text.slice(0, 160) : q;   // two sides: the doorways get the whole thought
@@ -1979,7 +1998,7 @@ function buildSky() {
       const c = addCluster(Object.assign({ id: 'k' + i, kind: 'sky', name: g.name, q: g.q || '' }, SLOTS[i % SLOTS.length]));
       c.born = now + i * 240;
       g.items.slice(0, 12).forEach((r, j) => addThought({ id: 'k' + i + '_' + j, c: c.id, kind: 'result', text: r.title, snippet: r.snippet, meta: r.meta, url: r.url,
-        src: r.src === 'launch' ? 'launch' : srcName(r.src), settled: clamp(.92 - (r.rank || 0) * .08, .3, .92) }));
+        src: r.src === 'launch' || r.src === 'suggest' ? r.src : srcName(r.src), settled: clamp(.92 - (r.rank || 0) * .08, .3, .92) }));
       layout(c, true);
     });
   });
@@ -1994,6 +2013,7 @@ async function runSky(text, exact) {
   if (id !== sky.busy) return;
   const two = exact ? null : sidesOf(text), qsets = exact ? [[text]] : two ? two.map(skyQueries) : [skyQueries(text)];
   sky.text = text; sky.q = qsets.map(q => q[0]).filter(Boolean).join(' / ') || text; sky.results = [];
+  const r0 = text.slice(0, 160); store.sky.recent = [r0].concat(store.sky.recent.filter(s => s !== r0)).slice(0, 8); save();
   $('#skyQ').value = sky.q; buildSky();
   say(two ? ['searching both: ', el('b', null, qsets[0][0]), ' · ', el('b', null, qsets[1][0])] : 'listening to the open sky.', 0);
   const srcs = SKY_SOURCES.filter(s => store.sky.sources[s.id] !== false), failed = new Set(), answered = new Set(), seen = new Set();
@@ -2013,7 +2033,11 @@ function restoreSky(s) {
   $('#skyQ').value = s.q;
   Promise.resolve(space === 'sky' && mode === 'map' ? null : goSpace('sky')).then(() => { buildSky(); say(['saved search: ', el('b', null, snip(s.q, 50))]); });
 }
-$('#skyBar').addEventListener('submit', e => { e.preventDefault(); const v = $('#skyQ').value.trim(); if (v) { $('#skyQ').blur(); runSky(v, true); } });
+$('#skyBar').addEventListener('submit', e => {
+  e.preventDefault(); const v = $('#skyQ').value.trim();
+  if (v) { $('#skyQ').blur(); runSky(v, true); }
+  else if (sky.q) { sky.busy++; sky.q = sky.text = ''; sky.results = []; buildSky(); say("back to the places to start.", 4000); }   // an empty search returns to the suggestions
+});
 $('#skyGroup').addEventListener('click', () => { store.sky.group = store.sky.group === 'source' ? 'theme' : 'source'; save(); buildSky(); });
 $('#skySave').addEventListener('click', () => {
   if (!sky.q) return say('search for something first.');
