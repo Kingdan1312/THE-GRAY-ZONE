@@ -356,7 +356,7 @@ dialog#you { width: min(460px, calc(100% - 32px)); }
 <div id="live" class="sr" aria-live="polite"></div>
 
 <div class="hud map-only">
-  <button class="b" id="newBtn" type="button">+ thought</button>
+  <button class="b solid" id="newBtn" type="button">+ thought</button>
   <span class="readout" id="readout" aria-hidden="true"></span>
   <div class="zoom">
     <button class="b" id="zoomOut" type="button" aria-label="zoom out">−</button>
@@ -1287,7 +1287,7 @@ document.addEventListener('keydown', e => {
   if (typing || e.metaKey || e.ctrlKey || e.altKey || mode !== 'map') return;
   // a star opened into the panel takes focus with it; arrows still walk the map from there
   if (ARROWS[e.key] && a !== canvas && (a === document.body || panel.contains(a))) { canvas.focus({ preventScroll: true }); return mapArrow(e, ARROWS[e.key]); }
-  if (e.key === 'n') { e.preventDefault(); openCompose(); }
+  if (e.key === 'n') { e.preventDefault(); openComposer(); }
   else if (e.key === '?') openAbout();
   else if (e.key === '0') showAll();
   else if (e.key === '1') goSpace('galaxy'); else if (e.key === '2') goSpace('nebulae'); else if (e.key === '3') goSpace('sky');
@@ -1461,7 +1461,7 @@ function renderOwn(t, st) {
   const why = sharedWords(t, c);
   n.push(el('p', { class: 'note' }, began(t, c) ? 'it began this constellation.' : why.length ? 'gathered by: ' + why.join(' · ') : 'you placed it here.'));
   if (c.poles) n.push(el('div', { class: 'sec' }, el('h3', null, 'where it sits'), spectrumView(c, t.stance), el('p', { class: 'where' }, stanceWords(t.stance, c))));
-  n.push(el('div', { class: 'row' }, btn('refine', () => renderOwn(t, { refine: true })),
+  n.push(el('div', { class: 'row' }, btn('refine', () => renderOwn(t, { refine: true }), 'b solid')), el('div', { class: 'row' },
     btn('join to another', () => { linkFrom = t; say('select another of your stars to draw a line to it.', 0); }),
     btn('search the open sky', () => runSky(t.text)), btn('share to a nebula', () => renderOwn(t, { share: true }))));
   const linked = linksOf(t);
@@ -1487,8 +1487,8 @@ function renderConstellation(c, st) {
   if (!c.name) n.push(el('p', { class: 'note' }, around.length ? `it gathered on its own around ${around.join(' · ')}. you can name it.` : 'it gathered on its own. you can name it.'));
   else if (around.length) n.push(el('p', { class: 'note' }, 'gathers around: ' + around.join(' · ')));
   if (c.poles) n.push(el('div', { class: 'sec' }, el('h3', null, 'its spectrum'), spectrumView(c, null), el('p', { class: 'where' }, 'thoughts start in the grey middle.')));
-  n.push(el('div', { class: 'row' }, btn('add a thought here', () => openCompose(c)), btn(c.name ? 'edit' : 'name it', () => openFound(c, 'galaxy')),
-    m.length ? null : btn('remove', () => { dropCluster(c); store.galaxy.clusters = store.galaxy.clusters.filter(d => d.id !== c.id); save(); })));
+  n.push(el('div', { class: 'row' }, btn('add a thought here', () => openComposer(c), 'b solid')), el('div', { class: 'row' }, btn(c.name ? 'edit' : 'name it', () => openFound(c, 'galaxy')),
+    m.length ? null : btn('remove', () => { dropCluster(c); store.galaxy.clusters = store.galaxy.clusters.filter(d => d.id !== c.id); save(); }, 'link')));
   n.push(el('div', { class: 'sec' }, el('h3', null, 'thoughts'),
     m.length ? el('ul', { class: 'list' }, m.map(t => thoughtItem(t))) : el('p', { class: 'note' }, 'nothing here yet.')));
   setPanel(n, 'constellation: ' + cname(c));
@@ -1501,13 +1501,19 @@ function renderRoomThought(t, st) {
   if (st.refine) { refineForm(t, c, n); return setPanel(n, 'refining a thought', true); }
   n.push(el('p', { class: 'thought' }, t.text), settledLine(t));
   n.push(el('div', { class: 'sec' }, el('h3', null, 'where it sits'), spectrumView(c, t.stance), el('p', { class: 'where' }, stanceWords(t.stance, c))));
-  const acts = el('div', { class: 'row' });
-  if (t.mine) acts.append(btn('refine', () => renderRoomThought(t, { refine: true })));
-  else if (member) acts.append(el('button', { class: 'b', type: 'button', 'aria-pressed': String(isRes(t)), onclick: () => { toggleRes(t); renderRoomThought(t, st); panel.querySelector('[aria-pressed]').focus({ preventScroll: true }); } }, 'resonates'));
-  if (member && !st.reply) acts.append(btn('reply', () => { renderRoomThought(t, { reply: true }); const r = $('#reply'); r.focus(); r.scrollIntoView({ block: 'nearest' }); }));
-  if (acts.childNodes.length) n.push(acts);
-  if (!member) n.push(el('p', { class: 'note' }, "you're glancing. join this nebula to reply or resonate."),
-    el('div', { class: 'row' }, btn('join', () => { setMember(c, true); renderRoomThought(t, {}); say('joined.'); })));
+  // one main action (reply, or refine for your own), then the rest
+  const main = el('div', { class: 'row' }), more = el('div', { class: 'row' });
+  const replyBtn = cls => btn('reply', () => { renderRoomThought(t, { reply: true }); const r = $('#reply'); r.focus(); r.scrollIntoView({ block: 'nearest' }); }, cls);
+  if (t.mine) main.append(btn('refine', () => renderRoomThought(t, { refine: true }), 'b solid'));
+  else if (member && !st.reply) main.append(replyBtn('b solid'));
+  if (member) {
+    if (t.mine) { if (!st.reply) more.append(replyBtn()); }
+    else more.append(el('button', { class: 'b', type: 'button', 'aria-pressed': String(isRes(t)), onclick: () => { toggleRes(t); renderRoomThought(t, st); panel.querySelector('[aria-pressed]').focus({ preventScroll: true }); } }, 'resonates'));
+    more.append(btn('add a thought here', () => openComposer(c)));
+  }
+  for (const r of [main, more]) if (r.childNodes.length) n.push(r);
+  if (!member) n.push(el('p', { class: 'note' }, "you're glancing. join this nebula to reply, resonate or add your own."),
+    el('div', { class: 'row' }, btn('join', () => { setMember(c, true); renderRoomThought(t, {}); say('joined.'); }, 'b solid')));
   if (!t.mine && isRes(t)) n.push(el('p', { class: 'note' }, 'it glows a little more now. nobody sees a number.'));
 
   if (parent) n.push(el('div', { class: 'sec' }, el('h3', null, 'in reply to'), el('ul', { class: 'list' }, thoughtItem(parent))));
@@ -1540,16 +1546,16 @@ function renderRoom(c, st) {
   n.push(el('h2', null, cname(c)), el('p', { class: 'question' }, c.q || 'no guiding question yet.'));
   n.push(el('p', { class: 'meta' }, (c.founder === 'you' ? 'founded by you' : c.demo ? 'founded by someone else' : 'founded by ' + (c.ownerAlias || 'someone')) + ' · ' + (member ? "you're a member" : "you're glancing")));
   n.push(el('div', { class: 'sec' }, el('h3', null, 'its spectrum'), spectrumView(c, null), el('p', { class: 'where' }, 'every thought starts in the grey middle. its author can move it.')));
-  const acts = el('div', { class: 'row' });
-  if (member) acts.append(btn('add a thought here', () => openCompose(c)));
+  const acts = el('div', { class: 'row' }), more = el('div', { class: 'row' });
+  if (member) acts.append(btn('add a thought here', () => openComposer(c), 'b solid'));
   else acts.append(btn('join', () => { setMember(c, true); renderRoom(c, {}); say('joined. you can add, reply and resonate here.'); }, 'b solid'));
-  if (c.founder === 'you') acts.append(btn('edit', () => openFound(c, 'room')));
-  else if (member) acts.append(btn('leave', () => { setMember(c, false); renderRoom(c, {}); say('you left. you can still glance.'); }));
-  if (c.demo && member && !st.propose) acts.append(btn('propose a rename', () => { renderRoom(c, { propose: true }); $('#pName').focus(); }));
-  if (c.remote) acts.append(btn('copy invite link', async () => {
+  if (c.founder === 'you') more.append(btn('edit', () => openFound(c, 'room')));
+  if (c.demo && member && !st.propose) more.append(btn('propose a rename', () => { renderRoom(c, { propose: true }); $('#pName').focus(); }));
+  if (c.remote) more.append(btn('copy invite link', async () => {
     try { await navigator.clipboard.writeText(inviteLink(c)); say('invite link copied.'); } catch (e) { renderRoom(c, { link: true }); }
   }));
-  n.push(acts);
+  if (c.founder !== 'you' && member) more.append(btn('leave', () => { setMember(c, false); renderRoom(c, {}); say('you left. you can still glance.'); }, 'link'));
+  n.push(acts); if (more.childNodes.length) n.push(more);
   if (st.link) { const i = el('input', { type: 'text', id: 'inv', readonly: true }); i.value = inviteLink(c); n.push(el('div', { class: 'field' }, el('label', { for: 'inv' }, 'copy this link and send it'), i)); }
   if (!member) n.push(el('p', { class: 'note' }, 'glancing is free. joining lets you add thoughts, reply and resonate.'));
 
@@ -1600,13 +1606,23 @@ function renderSkyCluster(c) {
 function autosize() { mind.style.height = 'auto'; mind.style.height = mind.scrollHeight + 'px'; goBtn.classList.toggle('on', !!mind.value.trim()); }
 let exN = Math.floor(Math.random() * EXAMPLES.length);
 const nextExample = () => { mind.placeholder = 'try: ' + EXAMPLES[exN++ % EXAMPLES.length]; };
-function openCompose(target) {
-  composeTarget = target || null; nextExample();
-  $('#target').hidden = !composeTarget; if (composeTarget) $('#targetName').textContent = cname(composeTarget);
-  closePanel(); closeMenu(); hush(); linkFrom = null; spaceToken++; setMode('compose');
-  landing.classList.remove('leaving', 'first'); landing.inert = false; care.hidden = true;
-  mapRate = 2.4; mapAT = 0; const l = landingCam(); flyTo(l.x, l.y, l.z, 1300);
-  setTimeout(() => mind.focus({ preventScroll: true }), 60);
+// once you're in, new thoughts are written in the side panel; the full-screen card is only for arriving
+function openComposer(target) {
+  if (mode !== 'map') return;
+  if (refineOrig) cancelRefine();
+  closeMenu(); linkFrom = null; sel = null; selCluster = null; kb = null;
+  const ta = el('textarea', { id: 'cText', rows: '4', maxlength: '600', placeholder: 'try: ' + EXAMPLES[exN++ % EXAMPLES.length] }), note = el('div');
+  const go = cleared => {
+    const text = ta.value.trim(); if (!text) { ta.focus(); return; }
+    if (!cleared && isCrisis(text)) { note.replaceChildren(careBlock(() => { note.replaceChildren(); ta.focus(); }, () => go(true))); return; }
+    place(text, target || null);
+  };
+  ta.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); go(false); } });
+  setPanel([head(el('span', { class: 'meta' }, 'a new thought')),
+    el('div', { class: 'field' }, el('label', { for: 'cText', class: 'ask' }, "what's on your mind?"), ta),
+    el('p', { class: 'note' }, 'enter to let it go · it lands in ' + (target ? cname(target) : 'your galaxy')), note,
+    el('div', { class: 'row' }, btn('let it go', () => go(false), 'b solid'), btn('cancel', () => closePanel(true), 'link'))], 'a new thought');
+  openPanel(); setTimeout(() => ta.focus({ preventScroll: true }), 60);
 }
 function leaveCompose() { landing.classList.add('leaving'); landing.inert = true; setMode('map'); mapRate = 2.4; mapAT = 1; showAll(1400); canvas.focus({ preventScroll: true }); }
 function submitMind(cleared) {
@@ -1658,7 +1674,7 @@ $('#wander').addEventListener('click', wander); $('#landingX').addEventListener(
 for (const b of document.querySelectorAll('#spaces [data-go]')) b.addEventListener('click', () => goSpace(b.dataset.go));
 $('#newHere').addEventListener('click', () => openAbout());
 $('#targetClear').addEventListener('click', () => { composeTarget = null; $('#target').hidden = true; mind.focus(); });
-$('#newBtn').addEventListener('click', () => openCompose());
+$('#newBtn').addEventListener('click', () => openComposer());
 $('#zoomIn').addEventListener('click', () => zoomBy(1.5));
 $('#zoomOut').addEventListener('click', () => zoomBy(1 / 1.5));
 $('#zoomFit').addEventListener('click', () => showAll());
