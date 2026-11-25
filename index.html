@@ -111,13 +111,19 @@ form:focus-within .rule { background-size: 100% 100%; }
 .under { display: flex; justify-content: space-between; align-items: center; gap: 12px; min-height: 34px; color: var(--dim); font-size: 12px; }
 .go { opacity: 0; pointer-events: none; transition: opacity .5s, color .25s; }
 .go.on { opacity: 1; pointer-events: auto; }
-.wander { align-self: flex-start; margin-top: 18px; font-size: 12px; color: var(--dim); display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
-.wander span { margin-right: 4px; }
+.wander { align-self: flex-start; margin-top: 18px; font-size: 12px; }
+.spaces { align-self: flex-start; display: flex; align-items: baseline; gap: 8px; margin-top: -8px; font-size: 11px; color: var(--dim); white-space: nowrap; }
 .newhere { align-self: flex-start; font-size: 11px; margin-top: -4px; }
+.landing-x { position: absolute; top: -7px; right: -8px; }
+.landing form { position: relative; }
+@media (max-width: 720px) {   /* bigger tap areas without moving the underlines */
+  .wander, .spaces .link, .newhere { position: relative; }
+  .wander::after, .spaces .link::after, .newhere::after { content: ''; position: absolute; inset: -9px -4px; }
+  .spaces { gap: 12px; margin-top: 4px; } .newhere { margin-top: 8px; } .landing .landing-x { top: -13px; right: -12px; width: 44px; height: 44px; } }
 @keyframes rise { from { opacity: 0; transform: translateY(8px); filter: blur(4px); } to { opacity: 1; transform: none; filter: none; } }
 .landing.first .prompt { animation: rise 1.6s .5s both; }
 .landing.first #mind, .landing.first .rule { animation: rise 1.6s 1s both; }
-.landing.first .under, .landing.first .wander, .landing.first .newhere { animation: rise 1.6s 1.7s both; }
+.landing.first .under, .landing.first .wander, .landing.first .spaces, .landing.first .newhere, .landing.first .landing-x { animation: rise 1.6s 1.7s both; }
 .top { animation: rise 1.6s .2s both; }
 
 /* gentle note shown instead of posting */
@@ -221,6 +227,12 @@ dialog.about { width: min(620px, calc(100% - 32px)); }
 .ways-h { color: var(--ink); font-size: 12px; font-weight: 400; letter-spacing: .1em; }
 .ways { gap: 8px 16px; line-height: 1.65; }
 .ways b { font-weight: 400; color: var(--mid); white-space: nowrap; }
+#aboutTitle:focus { outline: none; }
+@media (pointer: coarse) { .keys:not(.ways) { display: none; } }   /* keyboard shortcuts mean nothing on a touch screen */
+.field label.ask { color: var(--mid); }
+.notes .asked { color: var(--dim); }
+@media (max-width: 720px) { #panel .row.stick { position: sticky; bottom: 0; z-index: 1; background: rgb(24, 24, 25); padding: 10px 0; } }   /* settle stays in reach on a phone */
+#youBtn .avatar { width: 16px; height: 16px; border-radius: 50%; vertical-align: -3px; margin-right: 7px; filter: grayscale(1); }
 .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
 /* ── phones ── */
@@ -322,6 +334,7 @@ dialog#you { width: min(460px, calc(100% - 32px)); }
 
 <main class="landing first" id="landing">
   <form id="compose" novalidate>
+    <button class="x landing-x" id="landingX" type="button" aria-label="close and look around">×</button>
     <p class="target" id="target" hidden>adding to <span id="targetName"></span> <button type="button" class="link" id="targetClear">put it in my galaxy instead</button></p>
     <label class="prompt" for="mind">what's on your mind today?</label>
     <textarea id="mind" rows="1" maxlength="600" placeholder="start anywhere. it doesn't need to be finished." autocomplete="off"></textarea>
@@ -331,7 +344,8 @@ dialog#you { width: min(460px, calc(100% - 32px)); }
       <button class="b go" id="go" type="submit">let it go</button>
     </div>
     <div id="care" hidden></div>
-    <p class="wander" id="wander"><span>or wander into</span> <button class="link" type="button" data-go="galaxy">your galaxy</button> · <button class="link" type="button" data-go="nebulae">nebulae</button> · <button class="link" type="button" data-go="sky">the open sky</button></p>
+    <button class="link wander" id="wander" type="button">or wander</button>
+    <p class="spaces" id="spaces"><button class="link" type="button" data-go="galaxy">your galaxy</button><span aria-hidden="true">·</span><button class="link" type="button" data-go="nebulae">nebulae</button><span aria-hidden="true">·</span><button class="link" type="button" data-go="sky">the open sky</button></p>
     <button class="link newhere" id="newHere" type="button">new here? see how it works</button>
   </form>
 </main>
@@ -354,7 +368,7 @@ dialog#you { width: min(460px, calc(100% - 32px)); }
 
 <dialog id="about" class="about" aria-labelledby="aboutTitle">
   <div class="col">
-    <h2 id="aboutTitle">the gray zone</h2>
+    <h2 id="aboutTitle" tabindex="-1">the gray zone</h2>
     <p><b>a place for thoughts that aren't finished yet.</b><br>
     your galaxy keeps them. nebulae are small rooms. the open sky is the wider web.<br>
     stars brighten as you refine them. nothing here is counted.</p>
@@ -684,6 +698,7 @@ const validPoles = p => (Array.isArray(p) && p.length === 2 && p.every(s => type
 function cname(c) {
   if (c.name) return c.name;
   if (c.kind !== 'galaxy') return 'unnamed nebula';
+  if (c.auto) return c.auto;
   const w = (c.words || '').split(/\s+/).filter(Boolean).slice(0, 2);
   return w.length ? w.join(' · ') : 'unnamed';
 }
@@ -750,6 +765,7 @@ const xOf = (t, c) => (c.poles ? t.stance : t.spread);
 
 function layout(c, snap) {
   const m = members(c); c.n = m.length;
+  if (c.kind === 'galaxy') c.auto = gatherWords(c).slice(0, 2).join(' · ');   // an unnamed constellation is called by what it gathers around
   c.r = clamp(150 + m.length * 9, 160, 290);
   const pts = m.map(t => ({ t, x: c.x + xOf(t, c) * c.r * .82 + (rnd(t.id + 'x') - .5) * 14, y: c.y + t.oy * c.r * .46 }));
   for (let it = 0; it < 28; it++) for (let i = 0; i < pts.length; i++) for (let j = i + 1; j < pts.length; j++) {
@@ -1258,6 +1274,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     if (!menu.hidden) { closeMenu(); $('#menuBtn').focus(); return; }
     if (mode === 'compose') return leaveCompose();
+    if (mode === 'landing') return wander();
     if (linkFrom) { linkFrom = null; return say('left unjoined.'); }
     if (typing && a.id === 'skyQ') return a.blur();
     if (panelOpen && mode === 'map') { if (typing && panel.contains(a)) return a.blur(); return closePanel(true); }
@@ -1351,13 +1368,13 @@ function cancelRefine() { const t = refineOrig && byId.get(refineOrig.id); if (t
 function refineForm(t, c, n) {
   const own = t.kind === 'own';
   if (!refineOrig) refineOrig = { id: t.id, stance: t.stance };
-  const ta = el('textarea', { id: 'rText', rows: '5', maxlength: '600' }); ta.value = t.text;
+  const ta = el('textarea', { id: 'rText', rows: wide ? '5' : '3', maxlength: '600' }); ta.value = t.text;
   const note = el('div'), noteTa = own ? el('textarea', { id: 'rNote', rows: '4', maxlength: '4000', placeholder: 'anything you want to keep beside it.' }) : null;
-  const ask = own ? ASKS[t.refines % ASKS.length] : null, askTa = own ? el('textarea', { id: 'rAsk', rows: '3', maxlength: '600', placeholder: 'optional. kept with your notes.' }) : null;
+  const ask = own ? ASKS[t.refines % ASKS.length] : null, askTa = own ? el('textarea', { id: 'rAsk', rows: '2', maxlength: '600', placeholder: 'optional. kept with your notes.' }) : null;
   if (noteTa) noteTa.value = t.note;
   let range = null, read = () => t.stance;
   n.push(el('div', { class: 'field' }, el('label', { for: 'rText' }, 'say it again, closer to what you mean'), ta));
-  if (askTa) n.push(el('div', { class: 'field' }, el('label', { for: 'rAsk' }, ask), askTa));
+  if (askTa) n.push(el('div', { class: 'field' }, el('label', { for: 'rAsk', class: 'ask' }, ask), askTa));
   if (noteTa) n.push(el('div', { class: 'field' }, el('label', { for: 'rNote' }, 'notes, only for you'), noteTa));
   if (c.poles) {
     range = el('input', { type: 'range', id: 'rStance', min: '-100', max: '100', step: '1' }); range.value = Math.round(t.stance * 100);
@@ -1386,7 +1403,7 @@ function refineForm(t, c, n) {
     const now = clusters.get(t.c); learn(t); layout(now); if (clusters.has(c.id)) layout(c); persist(t); renderThought(t); say(said ? 'a little brighter. kept beside it.' : 'a little brighter.'); panel.focus({ preventScroll: true });
     if (now !== c) flyTo(now.x, now.y, fitCluster(now), 1500);
   };
-  n.push(note, el('div', { class: 'row' }, btn('settle', () => commit(false), 'b solid'), btn('cancel', () => { cancelRefine(); renderThought(t); })),
+  n.push(note, el('div', { class: 'row stick' }, btn('settle', () => commit(false), 'b solid'), btn('cancel', () => { cancelRefine(); renderThought(t); })),
     el('p', { class: 'note' }, 'each time you refine a thought it gets a little brighter. left alone, it slowly dims.'));
 }
 
@@ -1433,7 +1450,7 @@ function renderOwn(t, st) {
   if (st.refine) { refineForm(t, c, n); return setPanel(n, 'refining a thought', true); }
   n.push(el('p', { class: 'thought' }, t.text));
   if (t.url) n.push(el('p', { class: 'note' }, 'kept from the open sky · ', el('a', { href: t.url, target: '_blank', rel: 'noopener noreferrer' }, t.src || 'source')));
-  if (t.note) n.push(el('p', { class: 'notes' }, t.note));
+  if (t.note) n.push(el('p', { class: 'notes' }, t.note.split('\n').flatMap((l, i) => [i ? '\n' : null, ASKS.includes(l) ? el('span', { class: 'asked' }, l) : l])));
   n.push(settledLine(t));
   const why = sharedWords(t, c);
   n.push(el('p', { class: 'note' }, began(t, c) ? 'it began this constellation.' : why.length ? 'gathered by: ' + why.join(' · ') : 'you placed it here.'));
@@ -1452,7 +1469,7 @@ function renderOwn(t, st) {
         : el('p', { class: 'note' }, "you haven't joined a nebula yet. glance at a few first."),
       el('p', { class: 'note' }, `a copy goes there, shown as “${shownAs()}”. the original stays in your galaxy.`),
       el('div', { class: 'row' }, btn('look at nebulae', () => goSpace('nebulae')), btn('cancel', () => renderOwn(t, {})))));
-  } else if (near) n.push(el('p', { class: 'note' }, 'this sits near the nebula ', btn(cname(near), () => goRoom(near), 'link'), '.'));
+  } else if (near) n.push(el('p', { class: 'note' }, 'this sits near the nebula ', btn(cname(near), () => goRoom(near), 'link')));
   n.push(el('div', { class: 'row' }, btn(st.rm ? 'remove it for good' : 'remove', () => (st.rm ? removeOwn(t) : renderOwn(t, { rm: true })), 'link')));
   setPanel(n, 'one of your thoughts', st.share || st.rm);
 }
@@ -1460,8 +1477,9 @@ function renderConstellation(c, st) {
   const m = members(c).sort((a, b) => a.created - b.created), n = [head(el('span', { class: 'meta' }, 'constellation · yours'))];
   n.push(el('h2', { class: c.name ? null : 'unnamed' }, cname(c)));
   if (c.q) n.push(el('p', { class: 'question' }, c.q));
-  else if (!c.name) n.push(el('p', { class: 'note' }, 'it gathered on its own around these words. you can name it.'));
-  const around = gatherWords(c); if (around.length) n.push(el('p', { class: 'note' }, 'gathers around: ' + around.join(' · ')));
+  const around = gatherWords(c);
+  if (!c.name) n.push(el('p', { class: 'note' }, around.length ? `it gathered on its own around ${around.join(' · ')}. you can name it.` : 'it gathered on its own. you can name it.'));
+  else if (around.length) n.push(el('p', { class: 'note' }, 'gathers around: ' + around.join(' · ')));
   if (c.poles) n.push(el('div', { class: 'sec' }, el('h3', null, 'its spectrum'), spectrumView(c, null), el('p', { class: 'where' }, 'thoughts start in the grey middle.')));
   n.push(el('div', { class: 'row' }, btn('add a thought here', () => openCompose(c)), btn(c.name ? 'edit' : 'name it', () => openFound(c, 'galaxy')),
     m.length ? null : btn('remove', () => { dropCluster(c); store.galaxy.clusters = store.galaxy.clusters.filter(d => d.id !== c.id); save(); })));
@@ -1629,7 +1647,9 @@ async function place(text, target) {
 mind.addEventListener('input', autosize);
 mind.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); submitMind(false); } });
 $('#compose').addEventListener('submit', e => { e.preventDefault(); submitMind(false); });
-for (const b of document.querySelectorAll('#wander [data-go]')) b.addEventListener('click', () => goSpace(b.dataset.go));
+const wander = () => (visited ? leaveCompose() : goSpace(spaces.galaxy.thoughts.length ? 'galaxy' : 'nebulae'));
+$('#wander').addEventListener('click', wander); $('#landingX').addEventListener('click', wander);
+for (const b of document.querySelectorAll('#spaces [data-go]')) b.addEventListener('click', () => goSpace(b.dataset.go));
 $('#newHere').addEventListener('click', () => openAbout());
 $('#targetClear').addEventListener('click', () => { composeTarget = null; $('#target').hidden = true; mind.focus(); });
 $('#newBtn').addEventListener('click', () => openCompose());
@@ -1672,7 +1692,7 @@ menu.addEventListener('keydown', e => {
 
 /* ---------- dialogs ---------- */
 const about = $('#about'), found = $('#found'), you = $('#you');
-function openAbout() { if (!about.open) about.showModal(); }
+function openAbout() { if (about.open) return; about.showModal(); about.scrollTop = 0; $('#aboutTitle').focus({ preventScroll: true }); }   // start at the top, not at the close button
 $('#aboutBtn').addEventListener('click', openAbout);
 $('#mark').addEventListener('click', openAbout);
 $('#aboutClose').addEventListener('click', () => about.close());
@@ -1691,7 +1711,14 @@ $('#wipe').addEventListener('click', async e => {
 });
 about.addEventListener('close', () => { wipeArmed = false; $('#wipe').textContent = 'clear my traces'; });
 
+function syncYouBtn() {   // the header says at a glance whether you're signed in
+  const b = $('#youBtn'), u = cloud.user;
+  if (u) b.replaceChildren(...(u.photo ? [el('img', { class: 'avatar', src: u.photo, alt: '', referrerpolicy: 'no-referrer', onerror: e => e.target.remove() }), 'you'] : ['you · ' + (u.name || 'signed in')]));
+  else b.replaceChildren('you', cloud.on ? el('span', { class: 'signin' }, ' · sign in') : null);
+  b.setAttribute('aria-label', u ? 'you, signed in as ' + u.full : cloud.on ? 'you, signed out' : 'you');
+}
 function renderYou() {
+  syncYouBtn();
   $('#alias').value = store.profile.alias || '';
   $('#hideBtn').setAttribute('aria-pressed', String(!!store.profile.hidden));
   $('#hideNote').textContent = store.profile.hidden ? 'hidden. in nebulae you appear as “someone”.' : `in nebulae you appear as “${shownAs()}”.`;
@@ -1703,7 +1730,7 @@ function renderYou() {
   else k.push(el('p', { class: 'note' }, 'sign in to keep your galaxy on every device, see shared nebulae and found your own. what you write while signed out stays in this browser and is not added to your account.'), el('div', { class: 'row' }, btn('sign in with google', cloudSignIn, 'b solid')));
   $('#acct').replaceChildren(...k);
 }
-$('#youBtn').addEventListener('click', () => { renderYou(); if (!you.open) you.showModal(); });
+$('#youBtn').addEventListener('click', () => { renderYou(); if (!you.open) you.showModal(); const s = !cloud.user && $('#acct .solid'); if (s) s.focus(); });
 $('#youClose').addEventListener('click', () => you.close());
 $('#alias').addEventListener('input', e => { store.profile.alias = e.target.value.trim().toLowerCase().slice(0, 24); save(); $('#hideNote').textContent = store.profile.hidden ? 'hidden. in nebulae you appear as “someone”.' : `in nebulae you appear as “${shownAs()}”.`; });
 $('#hideBtn').addEventListener('click', () => { store.profile.hidden = !store.profile.hidden; save(); renderYou(); });
@@ -1912,7 +1939,7 @@ async function cloudInit() {
     cloud.U = U; cloud.F = F; cloud.auth = U.getAuth(app); cloud.db = F.getFirestore(app); cloud.ready = true;
     U.onAuthStateChanged(cloud.auth, u => {
       const name = u && (u.displayName || '');
-      cloud.user = u ? { uid: u.uid, full: name || 'you', name: name.split(/\s+/)[0].toLowerCase().slice(0, 24) } : null;
+      cloud.user = u ? { uid: u.uid, full: name || 'you', name: name.split(/\s+/)[0].toLowerCase().slice(0, 24), photo: /^https:\/\//.test(u.photoURL || '') ? u.photoURL : '' } : null;
       if (acct.uid && acct.uid !== (u && u.uid)) acctStop();
       if (u && acct.uid !== u.uid) acctStart(u.uid);
       cloudWatch(); renderYou(); refreshPanel();
