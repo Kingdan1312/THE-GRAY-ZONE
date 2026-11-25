@@ -114,7 +114,7 @@ form:focus-within .rule { background-size: 100% 100%; }
 .wander { align-self: flex-start; margin-top: 18px; font-size: 12px; }
 .spaces { align-self: flex-start; display: flex; align-items: baseline; gap: 8px; margin-top: -8px; font-size: 11px; color: var(--dim); white-space: nowrap; }
 .newhere { align-self: flex-start; font-size: 11px; margin-top: -4px; }
-.landing .landing-x { position: absolute; top: -13px; right: -12px; width: 44px; height: 44px; font-size: 22px; color: var(--mid); transition: color .25s; }
+.landing .landing-x { position: absolute; top: -18px; right: -16px; width: 56px; height: 56px; font-size: 34px; line-height: 1; color: var(--mid); transition: color .25s; }
 .landing .landing-x:hover { color: var(--ink); }
 .landing form { position: relative; }
 @media (max-width: 720px) {   /* bigger tap areas without moving the underlines */
@@ -233,6 +233,7 @@ dialog.about { width: min(620px, calc(100% - 32px)); }
 .field label.ask { color: var(--mid); }
 .notes .asked { color: var(--dim); }
 @media (max-width: 720px) { #panel .row.stick { position: sticky; bottom: 0; z-index: 1; background: rgb(24, 24, 25); padding: 10px 0; } }   /* settle stays in reach on a phone */
+body[data-space="sky"] #pullBtn { display: none; }   /* search results have no ends to lean toward */
 #youBtn .avatar { width: 16px; height: 16px; border-radius: 50%; vertical-align: -3px; margin-right: 7px; filter: grayscale(1); }
 .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
@@ -356,7 +357,10 @@ dialog#you { width: min(460px, calc(100% - 32px)); }
 <div id="live" class="sr" aria-live="polite"></div>
 
 <div class="hud map-only">
-  <button class="b solid" id="newBtn" type="button">+ thought</button>
+  <div class="zoom">
+    <button class="b solid" id="newBtn" type="button">+ thought</button>
+    <button class="b" id="pullBtn" type="button" aria-pressed="false" title="show which end each thought leans toward">pulls</button>
+  </div>
   <span class="readout" id="readout" aria-hidden="true"></span>
   <div class="zoom">
     <button class="b" id="zoomOut" type="button" aria-label="zoom out">−</button>
@@ -386,6 +390,7 @@ dialog#you { width: min(460px, calc(100% - 32px)); }
       <kbd>enter</kbd><span>open a star</span>
       <kbd>1 · 2 · 3</kbd><span>galaxy, nebulae, open sky</span>
       <kbd>n</kbd><span>new thought</span>
+      <kbd>p</kbd><span>pulls: which end each thought leans toward</span>
       <kbd>0</kbd><span>everything here</span>
       <kbd>esc</kbd><span>close</span>
     </div>
@@ -649,7 +654,7 @@ function ago(ts) {
 const KEY = 'grayzone.v2';
 const blank = () => ({ v: 2, first: Date.now(), profile: { alias: '', hidden: false, samples: true },
   galaxy: { clusters: [], thoughts: [] },
-  rooms: { clusters: [], thoughts: [], joined: {}, resonated: {}, votes: {}, proposals: [] },
+  rooms: { clusters: [], thoughts: [], joined: {}, resonated: {}, votes: {}, proposals: [], links: {} },
   sky: { sources: {}, group: 'theme', saved: [] } });
 let store = blank(), storageOK = true, legacy = null;
 try {
@@ -666,7 +671,7 @@ function fixStore(s) {
   const A = (o, k) => { if (!Array.isArray(o[k])) o[k] = []; }, O = (o, k) => { if (!o[k] || typeof o[k] !== 'object' || Array.isArray(o[k])) o[k] = {}; };
   for (const k of ['profile', 'galaxy', 'rooms', 'sky']) O(s, k);
   A(s.galaxy, 'clusters'); A(s.galaxy, 'thoughts'); A(s.rooms, 'clusters'); A(s.rooms, 'thoughts'); A(s.rooms, 'proposals'); A(s.sky, 'saved');
-  O(s.rooms, 'joined'); O(s.rooms, 'resonated'); O(s.rooms, 'votes'); O(s.sky, 'sources');
+  O(s.rooms, 'joined'); O(s.rooms, 'resonated'); O(s.rooms, 'votes'); O(s.rooms, 'links'); O(s.sky, 'sources');
   return s;
 }
 fixStore(store);
@@ -722,7 +727,7 @@ function addThought(d) {
   const t = { id: d.id, c: d.c, kind: d.kind, text: String(d.text || ''), note: d.note ? String(d.note) : '', url: d.url || '', src: d.src || '', meta: d.meta || '', snippet: d.snippet || '',
     stance: clamp(+d.stance || 0, -1, 1), spread: rnd(d.id + 'sp') * 1.7 - .85, settled: clamp(+d.settled || .2, .1, 1),
     created: +d.created || Date.now(), touched: +d.touched || Date.now(), mine: !!d.mine, alias: d.alias || '', re: d.re || null,
-    links: Array.isArray(d.links) ? d.links.slice() : [], glow: d.glow || 0, refines: d.refines || 0,
+    links: Array.isArray(d.links) ? d.links.slice() : d.kind === 'room' && Array.isArray(store.rooms.links[d.id]) ? store.rooms.links[d.id].slice() : [], glow: d.glow || 0, refines: d.refines || 0,
     oy: d.oy == null ? rnd(d.id + 'y') * 2 - 1 : d.oy, x: 0, y: 0, tx: 0, ty: 0, held: false,
     twp: rnd(d.id + 'p') * TAU, tws: .4 + rnd(d.id + 's') * .9, pulse: -1e7 };
   thoughts.push(t); byId.set(t.id, t); learn(t); return t;
@@ -847,6 +852,7 @@ const proposalsFor = c => (c.demo ? SEED_PROPOSALS : []).concat(store.rooms.prop
 /* ---------- view state ---------- */
 let W = 0, H = 0, dpr = 1, wide = true;
 let mode = 'landing', visited = false, composeTarget = null;
+const pullsOn = () => store.profile.pulls === true;   // off by default: the map stays calm until you ask to see the pulls
 let sel = null, selCluster = null, hover = null, hoverC = null, kb = null, panelOpen = false, drift = null, linkFrom = null;
 let mapA = 0, mapAT = 0, mapRate = 2.4, flyToken = 0, spaceToken = 0;
 const cam = { x: 0, y: 0, z: 1 }, goal = { x: 0, y: 0, z: 1 }, vc = { x: 0, y: 0 }, vcT = { x: 0, y: 0 };
@@ -1031,7 +1037,7 @@ function drawClusters(ts) {
     else { ctx.strokeStyle = white(.045 * a * hot); ellipse(sx, sy, rx, ry); }
     ctx.setLineDash([1, 8]); ctx.lineDashOffset = t * 3 * (hash(c.id) % 2 ? 1 : -1); ctx.strokeStyle = white(.15 * a); ellipse(sx, sy, rx * 1.13, ry * 1.17);
     ctx.setLineDash([]);
-    if (c.poles && zk > 0) {   // the spectrum: a soft horizontal axis, grey middle marked
+    if (c.poles && zk > 0 && pullsOn()) {   // the spectrum, shown with pulls: a soft horizontal axis, grey middle marked
       const g = ctx.createLinearGradient(sx - rx * .82, 0, sx + rx * .82, 0);
       g.addColorStop(0, white(.2 * a * zk)); g.addColorStop(.5, white(.05 * a * zk)); g.addColorStop(1, white(.2 * a * zk));
       ctx.strokeStyle = g; ctx.beginPath(); ctx.moveTo(sx - rx * .82, Math.round(sy) + .5); ctx.lineTo(sx + rx * .82, Math.round(sy) + .5); ctx.stroke();
@@ -1041,12 +1047,14 @@ function drawClusters(ts) {
 }
 function drawThreads(ts) {
   ctx.lineWidth = 1;
-  if (space === 'galaxy') for (const c of clusters.values()) {   // constellation lines, in the order thoughts arrived
-    const a = clusterAlpha(c, ts) * mapA; if (a < .01) continue;
-    const m = members(c).filter(t => !t.held).sort((p, q) => p.created - q.created); if (m.length < 2) continue;
-    ctx.strokeStyle = white(.12 * a); ctx.beginPath(); ctx.moveTo(X(m[0].x), Y(m[0].y));
-    for (let i = 1; i < m.length; i++) ctx.lineTo(X(m[i].x), Y(m[i].y)); ctx.stroke();
+  if (pullsOn()) for (const t of thoughts) {   // pulls: each thought drawn toward the end it leans to, stronger the further it leans
+    const c = clusters.get(t.c); if (t.held || !c || !c.poles || Math.abs(t.stance) < .1) continue;
+    const a = clusterAlpha(c, ts) * mapA * clamp((cam.z - .45) / .3, 0, 1); if (a < .01) continue;
+    const ex = X(c.x + Math.sign(t.stance) * c.r * .82), ey = Y(c.y), s = Math.abs(t.stance);
+    ctx.setLineDash([2, 4]); ctx.strokeStyle = white((.12 + .38 * s) * a);
+    ctx.beginPath(); ctx.moveTo(X(t.x), Y(t.y)); ctx.lineTo(ex, ey); ctx.stroke();
   }
+  ctx.setLineDash([]);
   for (const t of thoughts) {
     if (t.held || (!t.re && !t.links.length)) continue;
     const ca = mapA * clusterAlpha(clusters.get(t.c), ts);
@@ -1089,6 +1097,11 @@ function drawStars(ts) {
     ctx.beginPath(); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { ctx.moveTo(sx + dx * 18, sy + dy * 18); ctx.lineTo(sx + dx * 24, sy + dy * 24); } ctx.stroke();
   }
   const k = kb || hover;
+  for (const g of new Set([k, sel])) {   // the star you're on, or pointing at, glows
+    if (!g || g.held || byId.get(g.id) !== g) continue;
+    const R = (g === k ? 30 : 24) * ss * (reduced ? 1 : 1 + .06 * Math.sin(t1 * 2.2));
+    ctx.globalAlpha = (g === k ? .42 : .3) * mapA; ctx.drawImage(glowSprite, X(g.x) - R, Y(g.y) - R, R * 2, R * 2); ctx.globalAlpha = 1;
+  }
   if (k && k !== sel && !k.held) { ctx.strokeStyle = white(.55 * mapA); ctx.beginPath(); ctx.arc(X(k.x), Y(k.y), 10, 0, TAU); ctx.stroke(); }
 }
 function drawLabels(ts) {
@@ -1111,7 +1124,7 @@ function drawLabels(ts) {
     ctx.fillStyle = ink((c.name ? (hot ? 1 : .88) : (hot ? .9 : .66)) * a); ctx.fillText(name, lx, ny);
     if (hot) { ctx.strokeStyle = ink(.5 * a); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(lx - nw / 2, Math.round(ny + 10) + .5); ctx.lineTo(lx + nw / 2, Math.round(ny + 10) + .5); ctx.stroke(); }
     if (qa > 0) { ctx.font = `11px ${FONT}`; ls('.3px'); ctx.fillStyle = mid(.85 * a * qa); ctx.fillText(c.q, sx, sy - ry - 15); }
-    if (c.poles && zk > 0) {
+    if (c.poles && zk > 0 && pullsOn()) {
       ctx.font = `11px ${FONT}`; ls('.9px'); ctx.fillStyle = mid(.9 * a * zk);
       ctx.textAlign = 'left'; ctx.fillText(c.poles[0], sx - rx * .82, sy + ry + 17);
       ctx.textAlign = 'right'; ctx.fillText(c.poles[1], sx + rx * .82, sy + ry + 17);
@@ -1235,7 +1248,7 @@ canvas.addEventListener('dblclick', e => { if (mode !== 'map' || pick(e.clientX,
 function click(sx, sy, touch) {
   const t = pick(sx, sy, touch ? 26 : 16);
   if (t) return selectThought(t);
-  if (linkFrom) { linkFrom = null; return say('left unjoined.'); }
+  if (linkFrom) return stopLink();
   const c = pickLabel(sx, sy);
   if (c) return openCluster(c);
   const inside = pickEllipse(sx, sy);
@@ -1279,7 +1292,7 @@ document.addEventListener('keydown', e => {
     if (!menu.hidden) { closeMenu(); $('#menuBtn').focus(); return; }
     if (mode === 'compose') return leaveCompose();
     if (mode === 'landing') return wander();
-    if (linkFrom) { linkFrom = null; return say('left unjoined.'); }
+    if (linkFrom) return stopLink();
     if (typing && a.id === 'skyQ') return a.blur();
     if (panelOpen && mode === 'map') { if (typing && panel.contains(a)) return a.blur(); return closePanel(true); }
     return;
@@ -1288,6 +1301,7 @@ document.addEventListener('keydown', e => {
   // a star opened into the panel takes focus with it; arrows still walk the map from there
   if (ARROWS[e.key] && a !== canvas && (a === document.body || panel.contains(a))) { canvas.focus({ preventScroll: true }); return mapArrow(e, ARROWS[e.key]); }
   if (e.key === 'n') { e.preventDefault(); openComposer(); }
+  else if (e.key === 'p' && space !== 'sky') togglePulls();
   else if (e.key === '?') openAbout();
   else if (e.key === '0') showAll();
   else if (e.key === '1') goSpace('galaxy'); else if (e.key === '2') goSpace('nebulae'); else if (e.key === '3') goSpace('sky');
@@ -1347,7 +1361,7 @@ const thoughtItem = (t, extra) => el('li', null,
     el('small', null, t.kind === 'result' ? t.src + (t.meta ? ' · ' + t.meta : '') : who(t) + ' · ' + ago(t.created))), extra);
 
 function selectThought(t, o = {}) {
-  if (linkFrom && linkFrom !== t && t.kind === 'own') return completeLink(t);
+  if (linkFrom && linkFrom !== t && t.kind !== 'result' && byId.get(linkFrom.id) === linkFrom) return completeLink(t);
   if (refineOrig && refineOrig.id !== t.id) cancelRefine();
   sel = t; selCluster = null; kb = null; hover = null;
   renderThought(t); openPanel();
@@ -1436,12 +1450,31 @@ function tidy(c) {   // an unnamed constellation with nothing left in it dissolv
 
 /* ---------- galaxy ---------- */
 const linksOf = t => thoughts.filter(o => o !== t && (t.links.includes(o.id) || o.links.includes(t.id)));
+// connections: your own thoughts keep them in your galaxy (synced when signed in); connections between
+// nebula stars are yours alone and stay in this browser (store.rooms.links), never written to the room
+function keepLinks(t) {
+  if (t.kind === 'own') return persist(t);
+  if (t.links.length) store.rooms.links[t.id] = t.links.slice(); else delete store.rooms.links[t.id];
+  save();
+}
+function startLink(t) { linkFrom = t; renderThought(t, { linking: true }); say('select another star to connect it. esc to stop.', 0); canvas.focus({ preventScroll: true }); }
+function stopLink(msg) { const a = linkFrom; linkFrom = null; if (a && sel === a) renderThought(a); say(msg || 'stopped connecting.'); }
 function completeLink(t) {
   const a = linkFrom; linkFrom = null;
-  if (!linksOf(a).includes(t)) { a.links.push(t.id); persist(a); }
-  say('joined by a line.'); selectThought(a, { fly: false });
+  if (linksOf(a).includes(t)) say('already connected.');
+  else { a.links.push(t.id); keepLinks(a); a.pulse = t.pulse = performance.now(); say('connected.'); }
+  selectThought(a, { fly: false });
 }
-function unlink(a, b) { a.links = a.links.filter(x => x !== b.id); b.links = b.links.filter(x => x !== a.id); persist(a); persist(b); renderThought(a); }
+function unlink(a, b) { a.links = a.links.filter(x => x !== b.id); b.links = b.links.filter(x => x !== a.id); keepLinks(a); keepLinks(b); renderThought(a); say('disconnected.'); }
+function linksBlock(t, st) {   // the connect action plus what this star is connected to, each with an x
+  const linked = linksOf(t), n = [];
+  n.push(el('div', { class: 'sec' }, el('h3', null, 'connections'),
+    st.linking ? el('p', { class: 'note' }, 'select another star to connect it. ', btn('stop', () => stopLink(), 'link'))
+      : el('div', { class: 'row' }, btn('+ connect to another star', () => startLink(t))),
+    linked.length ? el('ul', { class: 'list' }, linked.map(o => thoughtItem(o, el('button', { class: 'x', type: 'button', 'aria-label': 'disconnect from: ' + snip(o.text, 40), title: 'disconnect', onclick: () => unlink(t, o) }, '×'))))
+      : el('p', { class: 'note' }, t.kind === 'room' ? 'not connected to anything yet. connections here are only yours.' : 'not connected to anything yet.')));
+  return n;
+}
 function removeOwn(t) {
   const c = clusters.get(t.c), linked = linksOf(t);
   dropThought(t); store.galaxy.thoughts = store.galaxy.thoughts.filter(d => d.id !== t.id);
@@ -1462,11 +1495,8 @@ function renderOwn(t, st) {
   n.push(el('p', { class: 'note' }, began(t, c) ? 'it began this constellation.' : why.length ? 'gathered by: ' + why.join(' · ') : 'you placed it here.'));
   if (c.poles) n.push(el('div', { class: 'sec' }, el('h3', null, 'where it sits'), spectrumView(c, t.stance), el('p', { class: 'where' }, stanceWords(t.stance, c))));
   n.push(el('div', { class: 'row' }, btn('refine', () => renderOwn(t, { refine: true }), 'b solid')), el('div', { class: 'row' },
-    btn('join to another', () => { linkFrom = t; say('select another of your stars to draw a line to it.', 0); }),
     btn('search the open sky', () => runSky(t.text)), btn('share to a nebula', () => renderOwn(t, { share: true }))));
-  const linked = linksOf(t);
-  if (linked.length) n.push(el('div', { class: 'sec' }, el('h3', null, 'joined to'),
-    el('ul', { class: 'list' }, linked.map(o => thoughtItem(o, el('button', { class: 'x', type: 'button', 'aria-label': 'remove this line', onclick: () => unlink(t, o) }, '×'))))));
+  n.push(...linksBlock(t, st));
   const near = nearRoom(t.text);
   if (st.share) {
     const rooms = inSpace('nebulae', () => [...clusters.values()].filter(isMember)).sort((a, b) => (b === near) - (a === near));
@@ -1477,7 +1507,7 @@ function renderOwn(t, st) {
       el('div', { class: 'row' }, btn('look at nebulae', () => goSpace('nebulae')), btn('cancel', () => renderOwn(t, {})))));
   } else if (near) n.push(el('p', { class: 'note' }, 'this sits near the nebula ', btn(cname(near), () => goRoom(near), 'link')));
   n.push(el('div', { class: 'row' }, btn(st.rm ? 'remove it for good' : 'remove', () => (st.rm ? removeOwn(t) : renderOwn(t, { rm: true })), 'link')));
-  setPanel(n, 'one of your thoughts', st.share || st.rm);
+  setPanel(n, 'one of your thoughts', st.share || st.rm || st.linking);
 }
 function renderConstellation(c, st) {
   const m = members(c).sort((a, b) => a.created - b.created), n = [head(el('span', { class: 'meta' }, 'constellation · yours'))];
@@ -1515,6 +1545,7 @@ function renderRoomThought(t, st) {
   if (!member) n.push(el('p', { class: 'note' }, "you're glancing. join this nebula to reply, resonate or add your own."),
     el('div', { class: 'row' }, btn('join', () => { setMember(c, true); renderRoomThought(t, {}); say('joined.'); }, 'b solid')));
   if (!t.mine && isRes(t)) n.push(el('p', { class: 'note' }, 'it glows a little more now. nobody sees a number.'));
+  n.push(...linksBlock(t, st));
 
   if (parent) n.push(el('div', { class: 'sec' }, el('h3', null, 'in reply to'), el('ul', { class: 'list' }, thoughtItem(parent))));
   if (kids.length) n.push(el('div', { class: 'sec' }, el('h3', null, 'replies'), el('ul', { class: 'list' }, kids.map(k => thoughtItem(k)))));
@@ -1538,7 +1569,7 @@ function renderRoomThought(t, st) {
     if (c.remote) cloudDelete(c, t); else { store.rooms.thoughts = store.rooms.thoughts.filter(d => d.id !== t.id); save(); }
     dropThought(t); layout(c); say('removed.');
   }, 'link')));
-  setPanel(n, 'a thought in ' + cname(c), st.reply || st.rm);
+  setPanel(n, 'a thought in ' + cname(c), st.reply || st.rm || st.linking);
 }
 function renderRoom(c, st) {
   const m = members(c).sort((a, b) => a.stance - b.stance), member = isMember(c);
@@ -1678,6 +1709,12 @@ $('#newBtn').addEventListener('click', () => openComposer());
 $('#zoomIn').addEventListener('click', () => zoomBy(1.5));
 $('#zoomOut').addEventListener('click', () => zoomBy(1 / 1.5));
 $('#zoomFit').addEventListener('click', () => showAll());
+const syncPulls = () => $('#pullBtn').setAttribute('aria-pressed', String(pullsOn()));
+function togglePulls() {
+  store.profile.pulls = !pullsOn(); save(); syncPulls();
+  say(pullsOn() ? 'pulls on. each thought leans toward the end it sits nearest.' : 'pulls off.');
+}
+$('#pullBtn').addEventListener('click', togglePulls); syncPulls();
 for (const b of document.querySelectorAll('.scales button')) b.addEventListener('click', () => goSpace(b.dataset.space));
 
 /* ---------- the list menu ---------- */
@@ -1740,7 +1777,7 @@ function syncYouBtn() {   // the header says at a glance whether you're signed i
   b.setAttribute('aria-label', u ? 'you, signed in as ' + u.full : cloud.on ? 'you, signed out' : 'you');
 }
 function renderYou() {
-  syncYouBtn();
+  syncYouBtn(); syncPulls();
   $('#alias').value = store.profile.alias || '';
   $('#hideBtn').setAttribute('aria-pressed', String(!!store.profile.hidden));
   $('#hideNote').textContent = store.profile.hidden ? 'hidden. in nebulae you appear as “someone”.' : `in nebulae you appear as “${shownAs()}”.`;
