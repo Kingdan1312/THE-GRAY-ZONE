@@ -1803,6 +1803,11 @@ function skyQueries(text) {   // from the whole thought down to its heaviest wor
   if (kw.length) { out.push(kw.slice(0, 3).join(' ')); if (kw.length > 2) out.push(kw.slice(0, 2).join(' ')); if (kw.length > 1) out.push(kw[0]); }
   return [...new Set(out.filter(Boolean))].slice(0, 3);
 }
+const WEB_WORDS = new Set('com org net www http https html htm pdf discussion image images texts movies audio etree software data collection video videos edition online website page site wiki'.split(' '));
+function sidesOf(text) {   // "x or y", "x vs y": two alternatives, each searched on its own so neither gets dropped
+  const m = String(text).trim().replace(/[?!.]+$/, '').split(/\s+(?:or|vs\.?|versus)\s+/i);
+  return m.length === 2 && m.every(p => terms(p).size) ? m : null;
+}
 async function askSource(s, queries) {
   let last = [];
   for (const q of queries) {
@@ -1812,8 +1817,9 @@ async function askSource(s, queries) {
   return last;
 }
 function themeGroups(results, qStems) {   // gather results around the words they share, beyond the ones you searched
-  const tfs = results.map(r => terms(r.title + ' ' + (r.snippet || ''))), raw = new Map();
-  for (const tf of tfs) for (const [s, e] of tf) if (!qStems.has(s) && !raw.has(s)) raw.set(s, e.raw);
+  // hacker news and archive snippets are boilerplate ("a discussion of x.com", a media type), so only titles count there
+  const tfs = results.map(r => terms(r.title + (r.src === 'hn' || r.src === 'archive' ? '' : ' ' + (r.snippet || '')))), raw = new Map();
+  for (const tf of tfs) for (const [s, e] of tf) if (!qStems.has(s) && !raw.has(s) && s.length > 3 && !WEB_WORDS.has(s) && !WEB_WORDS.has(e.raw)) raw.set(s, e.raw);
   const left = new Set(results.keys()), groups = [];
   while (groups.length < 6 && left.size > 2) {
     let best = null, bn = 1;
@@ -1838,7 +1844,8 @@ function buildSky() {
   if (store.sky.group === 'source') groups = SKY_SOURCES.map(s => ({ name: s.name, items: sky.results.filter(r => r.src === s.id) })).filter(g => g.items.length);
   else groups = themeGroups(sky.results, new Set(terms(q + ' ' + sky.text).keys()));
   groups = groups.slice(0, 7);
-  if (on('launch') && q) groups.push({ name: 'elsewhere', q: 'doorways to other places', items: LAUNCHERS.map(([n, u]) => ({ title: `search ${n} for “${snip(q, 60)}”`, url: u + enc(q), src: 'launch' })) });
+  const dq = sky.text && sky.text !== q && sidesOf(sky.text) ? sky.text.slice(0, 160) : q;   // two sides: the doorways get the whole thought
+  if (on('launch') && q) groups.push({ name: 'elsewhere', q: 'doorways to other places', items: LAUNCHERS.map(([n, u]) => ({ title: `search ${n} for “${snip(dq, 60)}”`, url: u + enc(dq), src: 'launch' })) });
   inSpace('sky', () => {
     clusters.clear(); thoughts.length = 0; byId.clear();
     const now = performance.now();
@@ -1859,16 +1866,21 @@ async function runSky(text, exact) {
   const id = ++sky.busy;
   if (space !== 'sky' || mode !== 'map') await goSpace('sky');
   if (id !== sky.busy) return;
-  const queries = exact ? [text] : skyQueries(text);
-  sky.text = text; sky.q = queries[0] || text; sky.results = [];
-  $('#skyQ').value = sky.q; buildSky(); say('listening to the open sky.', 0);
-  const srcs = SKY_SOURCES.filter(s => store.sky.sources[s.id] !== false), failed = [], answered = [];
-  await Promise.all(srcs.map(s => askSource(s, queries).then(rs => { if (rs.length) answered.push(s.name); rs.forEach((r, k) => sky.results.push(Object.assign(r, { src: s.id, rank: k }))); }, () => failed.push(s.name))));
+  const two = exact ? null : sidesOf(text), qsets = exact ? [[text]] : two ? two.map(skyQueries) : [skyQueries(text)];
+  sky.text = text; sky.q = qsets.map(q => q[0]).filter(Boolean).join(' / ') || text; sky.results = [];
+  $('#skyQ').value = sky.q; buildSky();
+  say(two ? ['searching both: ', el('b', null, qsets[0][0]), ' · ', el('b', null, qsets[1][0])] : 'listening to the open sky.', 0);
+  const srcs = SKY_SOURCES.filter(s => store.sky.sources[s.id] !== false), failed = new Set(), answered = new Set(), seen = new Set();
+  await Promise.all(srcs.flatMap(s => qsets.map(qs => askSource(s, qs).then(rs => {
+    if (rs.length) answered.add(s.name);
+    rs.forEach((r, k) => { if (seen.has(r.url)) return; seen.add(r.url); sky.results.push(Object.assign(r, { src: s.id, rank: k })); });
+  }, () => failed.add(s.name)))));
   if (id !== sky.busy) return;
   buildSky();
+  const off = [...failed].filter(n => !answered.has(n));
   if (!srcs.length) say('every source is switched off. the doorways still work.', 6000);
-  else if (!answered.length) say(failed.length === srcs.length ? "couldn't reach the open web from here. the doorways still open in a new tab." : 'nothing came back for that. try fewer words.', 8000);
-  else say((failed.length ? failed.join(', ') + " didn't answer. " : '') + 'select a star to open it.', 6000);
+  else if (!answered.size) say(off.length === srcs.length ? "couldn't reach the open web from here. the doorways still open in a new tab." : 'nothing came back for that. try fewer words.', 8000);
+  else say((off.length ? off.join(', ') + " didn't answer. " : '') + (two ? 'searched both sides. ' : '') + 'select a star to open it.', 6000);
 }
 function restoreSky(s) {
   sky.busy++; sky.q = s.q; sky.text = s.text || s.q; sky.results = (s.results || []).map(r => Object.assign({}, r));

@@ -6,7 +6,7 @@ It has three scales:
 
 - **galaxy**: your own thoughts. They gather into constellations by the words they share. You can refine them, keep notes beside them, and join stars with lines. Signed in with Google, your galaxy is saved to your account and follows you to any device. Signed out, it stays in that browser.
 - **nebulae**: small rooms. You can glance at one, join it, reply, resonate, or found your own. Eight sample rooms with seeded voices are included so the sky isn't empty.
-- **open sky**: send a thought outward. Results come back as stars grouped by theme or by source, and each one opens in a new tab.
+- **open sky**: send a thought outward. Results come back as stars grouped by theme or by source, and each one opens in a new tab. A thought that weighs two options ("x or y", "x vs y") searches each side separately, so neither one gets dropped.
 
 ## Put it on a link with GitHub Pages (free)
 
