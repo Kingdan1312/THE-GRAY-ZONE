@@ -532,6 +532,9 @@ const SEED_PROPOSALS = [
 const EXAMPLES = ['is it worth moving cities for work?', 'why do i keep putting off the things i care about?', 'how does sleep shape memory?', 'where did all the third places go?',
   'film or digital for street photos?', 'is a sourdough starter worth the fuss?', "i used to think ai art was theft. now i'm less sure.", "maybe ambition isn't the opposite of rest."];
 
+// refining one of your own thoughts asks one of these back, in turn
+const ASKS = ['why do you think this?', 'what would change your mind?', 'how would someone who disagrees put it?', "what's still unclear?"];
+
 /* ---------- text ---------- */
 const STOP = new Set((
   "a about above across after again against ago all almost alone along already also although always am among an and another any anymore anyone anything are aren't around as at away back be became because become been before being below between both but by came can can't cannot come comes could couldn't did didn't do does doesn't doing don't done down during each either else even ever every everyone everything few for from further gave get gets getting give go goes going gone got had hadn't half has hasn't have haven't having he he's her here hers herself him himself his how however i i'd i'll i'm i've if in into is isn't it it's its itself just keep keeps kept kind know knows last least less let let's like little lot lots made make makes making many may maybe me mean means might mine more most mostly much must my myself need needs never new next no nobody nor not now of off often oh ok okay old on once one ones only onto or other others our ours ourselves out over own part people per perhaps probably put quite rather really right said same say says see seem seemed seems she she's should shouldn't since so some somehow someone something sometimes somewhere soon still stuff such sure take taken tell than that that's the their theirs them themselves then there there's these they they're thing things think thinking this those though thought three through time times to today together too took toward towards try trying two under until up upon us use used very want wanted wanting wants was wasn't way ways we we're well went were weren't what what's whatever when where whether which while who whole whom whose why will with within without won't would wouldn't year years yes yesterday yet you you're your yours yourself feel feels feeling felt day days lately actually basically honestly literally thing im ive dont cant"
@@ -730,6 +733,18 @@ function saveCluster(c) {
   if (d) Object.assign(d, { name: c.name, q: c.q, poles: c.poles }); save();
 }
 const members = c => thoughts.filter(t => t.c === c.id);
+function sharedWords(t, c) {   // the words a thought shares with the rest of its constellation (its own learned words left out)
+  const base = new Set(terms([c.words || '', c.name || '', c.q || ''].join(' ')).keys());
+  for (const o of thoughts) if (o.c === c.id && o !== t) for (const [s] of terms(o.text)) base.add(s);
+  const out = []; for (const [s, e] of terms(t.text)) if (base.has(s)) out.push(e.raw);
+  return out.slice(0, 4);
+}
+function gatherWords(c) {   // the words most of a constellation's thoughts have in common
+  const m = members(c), df = new Map();
+  for (const t of m) for (const [s, e] of terms(t.text)) { const d = df.get(s); if (d) d.n++; else df.set(s, { n: 1, raw: e.raw }); }
+  return [...df.values()].filter(d => m.length < 2 || d.n > 1).sort((a, b) => b.n - a.n || b.raw.length - a.raw.length).slice(0, 4).map(d => d.raw);
+}
+const began = (t, c) => members(c).reduce((a, b) => (b.created < a.created ? b : a), t) === t;
 const bright = (t, now) => (t.kind === 'result' ? t.settled : .1 + (t.settled - .1) * Math.pow(.5, Math.max(0, now - t.touched) / DAY / 40));
 const xOf = (t, c) => (c.poles ? t.stance : t.spread);
 
@@ -1337,10 +1352,12 @@ function refineForm(t, c, n) {
   const own = t.kind === 'own';
   if (!refineOrig) refineOrig = { id: t.id, stance: t.stance };
   const ta = el('textarea', { id: 'rText', rows: '5', maxlength: '600' }); ta.value = t.text;
-  const note = el('div'), noteTa = own ? el('textarea', { id: 'rNote', rows: '4', maxlength: '2000', placeholder: 'anything you want to keep beside it.' }) : null;
+  const note = el('div'), noteTa = own ? el('textarea', { id: 'rNote', rows: '4', maxlength: '4000', placeholder: 'anything you want to keep beside it.' }) : null;
+  const ask = own ? ASKS[t.refines % ASKS.length] : null, askTa = own ? el('textarea', { id: 'rAsk', rows: '3', maxlength: '600', placeholder: 'optional. kept with your notes.' }) : null;
   if (noteTa) noteTa.value = t.note;
   let range = null, read = () => t.stance;
   n.push(el('div', { class: 'field' }, el('label', { for: 'rText' }, 'say it again, closer to what you mean'), ta));
+  if (askTa) n.push(el('div', { class: 'field' }, el('label', { for: 'rAsk' }, ask), askTa));
   if (noteTa) n.push(el('div', { class: 'field' }, el('label', { for: 'rNote' }, 'notes, only for you'), noteTa));
   if (c.poles) {
     range = el('input', { type: 'range', id: 'rStance', min: '-100', max: '100', step: '1' }); range.value = Math.round(t.stance * 100);
@@ -1358,13 +1375,15 @@ function refineForm(t, c, n) {
   const commit = cleared => {
     const text = ta.value.trim(); if (!text) { ta.focus(); return; }
     if (!cleared && isCrisis(text)) { note.replaceChildren(careBlock(() => { note.replaceChildren(); ta.focus(); }, () => commit(true))); return; }
+    const said = askTa ? askTa.value.trim() : '';
     t.text = text; t.stance = read(); if (noteTa) t.note = noteTa.value.trim();
+    if (said) t.note = ((t.note ? t.note + '\n\n' : '') + ask + '\n' + said).slice(0, 4000);
     t.settled = Math.min(1, t.settled + .22); t.touched = Date.now(); t.refines++; t.pulse = performance.now(); refineOrig = null;
     if (move && move.value !== c.id) {
       const to = move.value === '+' ? newConstellation(terms(text)) : clusters.get(move.value);
       if (to) { t.c = to.id; t.stance = 0; t.oy = pickOy(to, xOf(t, to), null, t); if (move.value === '+') to.born = performance.now(); layout(to); tidy(c); }
     }
-    const now = clusters.get(t.c); learn(t); layout(now); if (clusters.has(c.id)) layout(c); persist(t); renderThought(t); say('a little brighter.'); panel.focus({ preventScroll: true });
+    const now = clusters.get(t.c); learn(t); layout(now); if (clusters.has(c.id)) layout(c); persist(t); renderThought(t); say(said ? 'a little brighter. kept beside it.' : 'a little brighter.'); panel.focus({ preventScroll: true });
     if (now !== c) flyTo(now.x, now.y, fitCluster(now), 1500);
   };
   n.push(note, el('div', { class: 'row' }, btn('settle', () => commit(false), 'b solid'), btn('cancel', () => { cancelRefine(); renderThought(t); })),
@@ -1416,6 +1435,8 @@ function renderOwn(t, st) {
   if (t.url) n.push(el('p', { class: 'note' }, 'kept from the open sky · ', el('a', { href: t.url, target: '_blank', rel: 'noopener noreferrer' }, t.src || 'source')));
   if (t.note) n.push(el('p', { class: 'notes' }, t.note));
   n.push(settledLine(t));
+  const why = sharedWords(t, c);
+  n.push(el('p', { class: 'note' }, began(t, c) ? 'it began this constellation.' : why.length ? 'gathered by: ' + why.join(' · ') : 'you placed it here.'));
   if (c.poles) n.push(el('div', { class: 'sec' }, el('h3', null, 'where it sits'), spectrumView(c, t.stance), el('p', { class: 'where' }, stanceWords(t.stance, c))));
   n.push(el('div', { class: 'row' }, btn('refine', () => renderOwn(t, { refine: true })),
     btn('join to another', () => { linkFrom = t; say('select another of your stars to draw a line to it.', 0); }),
@@ -1440,6 +1461,7 @@ function renderConstellation(c, st) {
   n.push(el('h2', { class: c.name ? null : 'unnamed' }, cname(c)));
   if (c.q) n.push(el('p', { class: 'question' }, c.q));
   else if (!c.name) n.push(el('p', { class: 'note' }, 'it gathered on its own around these words. you can name it.'));
+  const around = gatherWords(c); if (around.length) n.push(el('p', { class: 'note' }, 'gathers around: ' + around.join(' · ')));
   if (c.poles) n.push(el('div', { class: 'sec' }, el('h3', null, 'its spectrum'), spectrumView(c, null), el('p', { class: 'where' }, 'thoughts start in the grey middle.')));
   n.push(el('div', { class: 'row' }, btn('add a thought here', () => openCompose(c)), btn(c.name ? 'edit' : 'name it', () => openFound(c, 'galaxy')),
     m.length ? null : btn('remove', () => { dropCluster(c); store.galaxy.clusters = store.galaxy.clusters.filter(d => d.id !== c.id); save(); })));
@@ -1593,7 +1615,7 @@ async function place(text, target) {
   mapAT = 1; await showAll(2200);                                    // the map opens around it
   if (fresh) c.born = performance.now();
   await tween(1100, k => { drift.line = ease(k); });                 // a thin line finds where it belongs
-  say(fresh ? (clusters.size === 1 ? 'your first constellation forms.' : 'nothing close yet. a new constellation forms.') : ['moved to: ', el('b', null, cname(c))], 0);
+  say(fresh ? (clusters.size === 1 ? 'your first constellation forms.' : 'nothing close yet. a new constellation forms.') : ['moved to: ', el('b', null, cname(c))].concat(target ? [] : (w => (w.length ? ' · by ' + w.join(', ') : []))(sharedWords(t, c))), 0);
   flyTo(c.x, c.y, fitCluster(c), 3200);                              // and the star drifts along it
   await tween(3000, k => { const e = ease(k); drift.k = e; t.x = lerp(0, drift.to.x, e); t.y = lerp(0, drift.to.y, e); });
   t.held = false; t.pulse = performance.now();
