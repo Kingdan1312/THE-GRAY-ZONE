@@ -240,6 +240,7 @@ dialog.about { width: min(620px, calc(100% - 32px)); }
 .notes .asked { color: var(--dim); }
 @media (max-width: 720px) { #panel .row.stick { position: sticky; bottom: 0; z-index: 1; background: rgb(24, 24, 25); padding: 10px 0; } }   /* settle stays in reach on a phone */
 body[data-space="sky"] #pullBtn { display: none; }   /* search results have no ends to lean toward */
+.avatar { width: 14px; height: 14px; border-radius: 50%; vertical-align: -2px; margin-right: 6px; filter: grayscale(1); }
 #youBtn .avatar { width: 16px; height: 16px; border-radius: 50%; vertical-align: -3px; margin-right: 7px; filter: grayscale(1); }
 .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
@@ -1158,12 +1159,15 @@ function drawDrift(ts) {
 
 const sample = t => t.kind === 'room' && /^s\d+$/.test(t.id);   // a seeded voice in a sample room
 const who = t => (t.mine ? 'you' : sample(t) ? 'a sample voice' : t.alias || 'someone');
+// a nebula thought's google photo: yours (unless your profile is hidden), or the one its author shared with it
+const faceOf = t => (t.kind !== 'room' ? '' : t.mine ? (!store.profile.hidden && cloud.user && cloud.user.photo) || '' : t.photo || '');
+const face = t => { const p = faceOf(t); return p ? el('img', { class: 'avatar', src: p, alt: '', referrerpolicy: 'no-referrer', onerror: e => e.target.remove() }) : null; };
 const tipSmall = t => (t.kind === 'result' ? (t.src === 'launch' ? 'opens in a new tab' : t.src) : cname(clusters.get(t.c)) + (t.mine && t.kind === 'room' ? ' · yours' : sample(t) ? ' · sample' : ''));
 let tipFor = null, frameN = 0, last = 0;
 function updateTip() {
   const t = mode === 'map' && !drag ? (kb || hover) : null;
   if (!t || t === sel) { if (tipFor) { tip.classList.remove('on'); tipFor = null; } return; }
-  if (tipFor !== t) { tipFor = t; tip.replaceChildren(snip(t.text, 120), el('small', null, tipSmall(t))); tip.classList.add('on'); }
+  if (tipFor !== t) { tipFor = t; tip.replaceChildren(snip(t.text, 120), el('small', null, face(t), (t.kind === 'room' && !t.mine && !sample(t) ? who(t) + ' · ' : '') + tipSmall(t))); tip.classList.add('on'); }
   const sx = X(t.x), sy = Y(t.y), w = tip.offsetWidth, h = tip.offsetHeight;
   const x = clamp(sx + 18, 8, W - w - 8), y = sy + 18 + h > H - 8 ? sy - 18 - h : sy + 18;
   tip.style.transform = `translate(${Math.round(x)}px,${Math.round(y)}px)`;
@@ -1364,7 +1368,7 @@ function careBlock(onEdit, onPlace) {
 }
 const thoughtItem = (t, extra) => el('li', null,
   el('button', { type: 'button', onclick: () => selectThought(t, { keepFocus: true }) }, snip(t.text, 150),
-    el('small', null, t.kind === 'result' ? t.src + (t.meta ? ' · ' + t.meta : '') : who(t) + ' · ' + ago(t.created))), extra);
+    el('small', null, t.kind === 'result' ? t.src + (t.meta ? ' · ' + t.meta : '') : [face(t), who(t) + ' · ' + ago(t.created)])), extra);
 
 function selectThought(t, o = {}) {
   if (linkFrom && linkFrom !== t && t.kind !== 'result' && byId.get(linkFrom.id) === linkFrom) return completeLink(t);
@@ -1448,6 +1452,11 @@ function toggleRes(t) {
   save();
 }
 const nearRoom = text => inSpace('nebulae', () => { const r = rankClusters(terms(text), clusters.values()).ranked[0]; return r && r.ok ? r.c : null; });
+function relatedRooms(text, n = 3) {   // nebulae worth exploring from a thought, with the words they share
+  const tf = terms(text);
+  return inSpace('nebulae', () => rankClusters(tf, clusters.values()).ranked.filter(r => r.ok || r.score >= .1).slice(0, n)
+    .map(r => ({ c: r.c, words: [...tf].filter(([s]) => r.c.terms.has(s)).map(([, e]) => e.raw).slice(0, 3) })));
+}
 const goRoom = c => Promise.resolve(goSpace('nebulae')).then(() => { if (space === 'nebulae' && clusters.get(c.id) === c) openCluster(c, { focus: true }); });
 function tidy(c) {   // an unnamed constellation with nothing left in it dissolves
   if (c.kind !== 'galaxy' || c.name || members(c).length) return;
@@ -1501,7 +1510,15 @@ function renderOwn(t, st) {
   n.push(el('p', { class: 'note' }, began(t, c) ? 'it began this constellation.' : why.length ? 'gathered by: ' + why.join(' · ') : 'you placed it here.'));
   if (c.poles) n.push(el('div', { class: 'sec' }, el('h3', null, 'where it sits'), spectrumView(c, t.stance), el('p', { class: 'where' }, stanceWords(t.stance, c))));
   n.push(el('div', { class: 'row' }, btn('refine', () => renderOwn(t, { refine: true }), 'b solid'), btn('+ add a thought', () => openComposer(c), 'b ghost')), el('div', { class: 'row' },
-    btn('search the open sky', () => runSky(t.text)), btn('share to a nebula', () => renderOwn(t, { share: true }))));
+    btn('explore related nebulae', () => renderOwn(t, { related: true })), btn('search the open sky', () => runSky(t.text)), btn('share to a nebula', () => renderOwn(t, { share: true }))));
+  if (st.related) {
+    const rel = relatedRooms(t.text);
+    n.push(el('div', { class: 'sec' }, el('h3', null, 'nebulae to explore'),
+      rel.length ? el('ul', { class: 'list' }, rel.map(({ c: r, words }) => el('li', null, el('button', { type: 'button', onclick: () => goRoom(r) }, cname(r),
+        el('small', null, (r.q ? r.q + ' · ' : '') + (words.length ? 'shares: ' + words.join(' · ') : 'a loose match') + (isMember(r) ? '' : ' · glance'))))))
+        : el('p', { class: 'note' }, 'nothing close yet. the nebulae might still surprise you.'),
+      el('div', { class: 'row' }, btn('look at all nebulae', () => goSpace('nebulae')), btn('close', () => renderOwn(t, {}), 'link'))));
+  }
   n.push(...linksBlock(t, st));
   const near = nearRoom(t.text);
   if (st.share) {
@@ -1511,9 +1528,9 @@ function renderOwn(t, st) {
         : el('p', { class: 'note' }, "you haven't joined a nebula yet. glance at a few first."),
       el('p', { class: 'note' }, `a copy goes there, shown as “${shownAs()}”. the original stays in your galaxy.`),
       el('div', { class: 'row' }, btn('look at nebulae', () => goSpace('nebulae')), btn('cancel', () => renderOwn(t, {})))));
-  } else if (near) n.push(el('p', { class: 'note' }, 'this sits near the nebula ', btn(cname(near), () => goRoom(near), 'link')));
+  }
   n.push(el('div', { class: 'row' }, btn(st.rm ? 'remove it for good' : 'remove', () => (st.rm ? removeOwn(t) : renderOwn(t, { rm: true })), 'link')));
-  setPanel(n, 'one of your thoughts', st.share || st.rm || st.linking);
+  setPanel(n, 'one of your thoughts', st.share || st.rm || st.linking || st.related);
 }
 function renderConstellation(c, st) {
   const m = members(c).sort((a, b) => a.created - b.created), n = [head(el('span', { class: 'meta' }, 'constellation · yours'))];
@@ -1533,7 +1550,7 @@ function renderConstellation(c, st) {
 /* ---------- nebulae ---------- */
 function renderRoomThought(t, st) {
   const c = clusters.get(t.c), parent = t.re && byId.get(t.re), kids = thoughts.filter(o => o.re === t.id).sort((a, b) => a.created - b.created), member = isMember(c), n = [head(crumb(c))];
-  n.push(el('p', { class: 'meta' }, who(t) + ' · ' + ago(t.created) + (t.refines ? ' · refined' : '') + (t.mine ? ` · shown as “${t.alias || shownAs()}”` : '')));
+  n.push(el('p', { class: 'meta' }, face(t), who(t) + ' · ' + ago(t.created) + (t.refines ? ' · refined' : '') + (t.mine ? ` · shown as “${t.alias || shownAs()}”` : '')));
   if (st.refine) { refineForm(t, c, n); return setPanel(n, 'refining a thought', true); }
   n.push(el('p', { class: 'thought' }, t.text), settledLine(t));
   n.push(el('div', { class: 'sec' }, el('h3', null, 'where it sits'), spectrumView(c, t.stance), el('p', { class: 'where' }, stanceWords(t.stance, c))));
@@ -2138,7 +2155,7 @@ function cloudRoom(rid, d) {   // runs inside the nebulae space
           let t = byId.get(tid);
           if (!t) { t = addThought({ id: tid, c: id, kind: 'room', text: v.text, stance: v.stance, settled: v.settled, created: v.created, touched: v.touched, refines: v.refines, re: v.re ? 'f_' + v.re : null }); t.x = c.x; t.y = c.y; t.pulse = performance.now(); }
           else if (!(refineOrig && refineOrig.id === tid)) { t.text = String(v.text || ''); t.stance = clamp(+v.stance || 0, -1, 1); t.settled = clamp(+v.settled || .2, .1, 1); t.touched = +v.touched || t.touched; t.refines = v.refines || 0; }
-          t.pending = false; t.uid = v.uid; t.mine = v.uid === uidMe; t.alias = String(v.alias || 'someone').slice(0, 24);
+          t.pending = false; t.uid = v.uid; t.mine = v.uid === uidMe; t.alias = String(v.alias || 'someone').slice(0, 24); t.photo = /^https:\/\//.test(v.photo || '') ? v.photo : '';
           t.res = res; t.resMine = res.includes(uidMe); t.glow = Math.min(.9, res.length * .22);
         });
         for (const t of members(c)) if (!seen.has(t.id) && !t.pending) dropThought(t);
@@ -2160,7 +2177,7 @@ const cloudDoc = (c, t) => cloud.F.doc(cloud.db, 'nebulae', c.remote, 'thoughts'
 const cloudNewId = c => cloud.F.doc(cloud.F.collection(cloud.db, 'nebulae', c.remote, 'thoughts')).id;
 function cloudSetThought(c, t) {
   cloud.F.setDoc(cloudDoc(c, t), { text: t.text, stance: t.stance, settled: t.settled, created: t.created, touched: t.touched, refines: t.refines,
-    re: t.re ? t.re.slice(2) : null, uid: cloud.user.uid, alias: t.alias || shownAs() }, { merge: true }).catch(e => cloudFail('send that to the nebula', e));
+    re: t.re ? t.re.slice(2) : null, uid: cloud.user.uid, alias: t.alias || shownAs(), photo: store.profile.hidden ? '' : cloud.user.photo || '' }, { merge: true }).catch(e => cloudFail('send that to the nebula', e));
 }
 const cloudDelete = (c, t) => cloud.F.deleteDoc(cloudDoc(c, t)).catch(e => cloudFail('remove that', e));
 const cloudRes = (c, t, on) => cloud.F.updateDoc(cloudDoc(c, t), { res: on ? cloud.F.arrayUnion(cloud.user.uid) : cloud.F.arrayRemove(cloud.user.uid) }).catch(e => cloudFail('save that', e));
