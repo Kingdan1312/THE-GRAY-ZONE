@@ -241,6 +241,7 @@ dialog.about { width: min(620px, calc(100% - 32px)); }
 @media (max-width: 720px) { #panel .row.stick { position: sticky; bottom: 0; z-index: 1; background: rgb(24, 24, 25); padding: 10px 0; } }   /* settle stays in reach on a phone */
 body[data-space="sky"] #pullBtn { display: none; }   /* search results have no ends to lean toward */
 .avatar { width: 14px; height: 14px; border-radius: 50%; vertical-align: -2px; margin-right: 6px; filter: grayscale(1); }
+.avatar.mono { display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--mid); color: var(--ink); font-size: 9px; line-height: 1; vertical-align: 0; }
 .thought.small { font-size: 13px; color: var(--mid); }
 .list li.reply { margin-left: 18px; }
 .list li.reply > button::before { content: '↳ '; color: var(--dim); }
@@ -1194,14 +1195,22 @@ function drawDrift(ts) {
 const sample = t => t.kind === 'room' && /^s\d+$/.test(t.id);   // a seeded voice in a sample room
 const who = t => (t.mine ? 'you' : sample(t) ? 'a sample voice' : t.alias || 'someone');
 // a nebula thought's google photo: yours (unless your profile is hidden), or the one its author shared with it
-const faceOf = t => (t.kind !== 'room' ? '' : t.mine ? (!store.profile.hidden && cloud.user && cloud.user.photo) || '' : t.photo || '');
-const face = t => { const p = faceOf(t); return p ? el('img', { class: 'avatar', src: p, alt: '', referrerpolicy: 'no-referrer', onerror: e => e.target.remove() }) : null; };
-const tipSmall = t => (t.kind === 'result' ? (t.src === 'launch' ? 'opens in a new tab' : t.src === 'suggest' ? 'search the open sky for this' : t.src) : cname(clusters.get(t.c)) + (t.mine && t.kind === 'room' ? ' · yours' : sample(t) ? ' · sample' : ''));
+const faceOf = t => (t.kind === 'own' || t.mine ? (!store.profile.hidden && cloud.user && cloud.user.photo) || '' : t.kind === 'room' ? t.photo || '' : '');
+// a person's face beside their words: their google photo, or (no photo, or it won't load) the first letter of their name in a ring
+const mark = t => el('span', { class: 'avatar mono', 'aria-hidden': 'true' }, (who(t)[0] || '·'));
+const face = t => {
+  if ((t.kind !== 'room' && t.kind !== 'own') || sample(t)) return null;
+  const p = faceOf(t);
+  return p ? el('img', { class: 'avatar', src: p, alt: '', referrerpolicy: 'no-referrer', onerror: e => e.target.replaceWith(mark(t)) }) : mark(t);
+};
+// under a star's words: who, then where (a search result says where it came from instead)
+const tipSmall = t => (t.kind === 'result' ? (t.src === 'launch' ? 'opens in a new tab' : t.src === 'suggest' ? 'search the open sky for this' : t.src)
+  : who(t) + ' · ' + cname(clusters.get(t.c)) + (sample(t) ? ' · sample' : ''));
 let tipFor = null, frameN = 0, last = 0;
 function updateTip() {
   const t = mode === 'map' && !drag ? (kb || hover) : null;
   if (!t || t === sel) { if (tipFor) { tip.classList.remove('on'); tipFor = null; } return; }
-  if (tipFor !== t) { tipFor = t; tip.replaceChildren(snip(t.text, 120), el('small', null, face(t), (t.kind === 'room' && !t.mine && !sample(t) ? who(t) + ' · ' : '') + tipSmall(t))); tip.classList.add('on'); }
+  if (tipFor !== t) { tipFor = t; tip.replaceChildren(snip(t.text, 120), el('small', null, face(t), tipSmall(t))); tip.classList.add('on'); }
   const sx = X(t.x), sy = Y(t.y), w = tip.offsetWidth, h = tip.offsetHeight;
   const x = clamp(sx + 18, 8, W - w - 8), y = sy + 18 + h > H - 8 ? sy - 18 - h : sy + 18;
   tip.style.transform = `translate(${Math.round(x)}px,${Math.round(y)}px)`;
@@ -2269,6 +2278,8 @@ function cloudRoom(rid, d) {   // runs inside the nebulae space
           if (!t) { t = addThought({ id: tid, c: id, kind: 'room', text: v.text, stance: v.stance, settled: v.settled, created: v.created, touched: v.touched, refines: v.refines, re: v.re ? 'f_' + v.re : null }); t.x = c.x; t.y = c.y; t.pulse = performance.now(); }
           else if (!(refineOrig && refineOrig.id === tid)) { t.text = String(v.text || ''); t.stance = clamp(+v.stance || 0, -1, 1); t.settled = clamp(+v.settled || .2, .1, 1); t.touched = +v.touched || t.touched; t.refines = v.refines || 0; }
           t.pending = false; t.uid = v.uid; t.mine = v.uid === uidMe; t.alias = String(v.alias || 'someone').slice(0, 24); t.photo = /^https:\/\//.test(v.photo || '') ? v.photo : '';
+          // thoughts you posted before photos were shared get yours added, so others can see who wrote them
+          if (t.mine && !t.photo && !t.photoAsked && !store.profile.hidden && cloud.user.photo) { t.photoAsked = true; cloud.F.updateDoc(cloudDoc(c, t), { photo: cloud.user.photo }).catch(() => {}); }
           t.res = res; t.resMine = res.includes(uidMe); t.glow = Math.min(.9, res.length * .22);
         });
         for (const t of members(c)) if (!seen.has(t.id) && !t.pending) dropThought(t);
