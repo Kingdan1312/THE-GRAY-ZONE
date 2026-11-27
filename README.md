@@ -1,21 +1,32 @@
 # gray zone
 
-A place for thoughts that aren't finished yet. One file, `index.html`, no build step.
+A space for unfinished thoughts. Two files, `index.html` and `samples.js` (the sample rooms), no build step. The logomark lives in `graphics/logomark01/`; the browser tab icon is loaded from there, and the header and welcome card draw it inline.
 
 It has three scales:
 
-- **galaxy**: your own thoughts. They gather into constellations by the words they share. You can refine them, keep notes beside them, and connect any two stars (and disconnect them again from the star's panel). Signed in with Google, your galaxy is saved to your account and follows you to any device. Signed out, it stays in that browser.
-- **nebulae**: small rooms. You can glance at one, join it, reply, resonate, or found your own. You can also connect any two stars in a room; those connections are only yours and stay in that browser. The **pulls** toggle (or the `p` key) shows which end of a room's spectrum each thought leans toward. Eight sample rooms with seeded voices are included so the sky isn't empty.
-- **open sky**: send a thought outward. Results come back as stars grouped by theme or by source, and each one opens in a new tab. A thought that weighs two options ("x or y", "x vs y") searches each side separately, so neither one gets dropped.
+- **galaxy**: your own thoughts. They gather into constellations by the words they share, and each thought's panel says which words gathered it. You can refine a thought (it asks you a question back, such as "what would change your mind?", and keeps your answer in its notes), keep notes beside it, and connect any two stars (and disconnect them again from the star's panel). "Explore related nebulae" suggests rooms that share a thought's words. Signed in with Google, your galaxy is saved to your account and follows you to any device. Signed out, it stays in that browser.
+- **nebulae**: small rooms. You can glance at one, join it, reply, resonate, or found your own. Replies show as smaller stars beside what they answer, and are indented under it in the room's list. You can connect any two stars in a room; those connections are only yours. Five sample rooms are included so the sky isn't empty. Their threads are written by five recurring sample voices (mara, theo, juno, kofi and ines), marked with a dotted ring so they never pass for real people. **sample nebulae** in the nebulae list hides or shows them at once; your replies, joins and votes in them are kept either way. The sample content lives in `samples.js`, plain data you can edit without touching the app.
+- **open sky**: send a thought outward. Before you search, it offers places to start: your recent searches, your latest thoughts and the rooms' questions. Results come back as stars grouped by theme or by source, and each one opens in a new tab. Anything from the web is drawn with a small four-point glint, so it stays recognisable after you keep it in your galaxy or bring it into a nebula ("bring to a nebula" lets you say where it sits on the room's spectrum, so it takes part in the pulls). The same page can't be kept or brought to the same place twice. A thought that weighs two options ("x or y", "x vs y") searches each side separately, so neither one gets dropped.
+
+### Getting around
+
+- **+ thought** (or `n`) writes a new thought in the side panel and lets you choose where it goes: your galaxy, a nebula you've joined, or the open sky. **+ add a thought** on a star, constellation or room puts it right there.
+- **What's new.** A star that slowly breathes is new since you last looked: someone else's words in a nebula, something you kept from the open sky (it lands in your galaxy out of sight), something added to your galaxy on another device, or a new room's question among the open sky's places to start. It stops once you open it. A small red dot on **galaxy**, **nebulae** or **open sky** means something new arrived there; it clears when you go there. Search results never count as new. These marks stay in that browser.
+- Arrow keys move between stars and Enter opens one. In a star's panel, ‹ › step through its group; on a phone, swipe sideways on the panel.
+- **pulls** (`p`) slides each thought toward the end of its spectrum it leans to. **spread** (`s`) gives the stars more room. You can drag any star with a mouse to tidy your view; the spot is kept only in that browser, and **reset layout** puts things back.
+- The welcome card appears when you open the page. The × or Esc closes it, and "new here? see how it works" opens a short tour (six steps; ‹ › or the arrow keys).
+- Hovering over (or tabbing to) the **gray zone** logo shows a short about card; clicking the logo refreshes the page (it asks first if you have unsaved words).
+- **help** (or `?`) has four sections: start here, controls (with what each kind of star means), keys (hidden on touch screens) and your traces.
+- **Clearing your traces** lives under **you**. Tick what to clear: your galaxy (all of it, or only the constellations you pick), searches, your part in the rooms, layout and new marks, or everything (here and in your account, after which the page starts over). It asks twice, and your thoughts in shared nebulae stay; remove those from each star.
 
 ## Put it on a link with GitHub Pages (free)
 
 1. Create a GitHub account if you don't have one, then make a new **public** repository, for example `gray-zone`.
-2. Upload `index.html` (and this README if you like) to the repository.
+2. Upload `index.html`, `samples.js` and the `graphics` folder (and this README if you like) to the repository.
 3. In the repository, open **Settings → Pages**. Under "Build and deployment", choose **Deploy from a branch**, pick `main` and `/ (root)`, and save.
 4. After a minute or two the site is live at `https://YOUR-USERNAME.github.io/gray-zone/`. Send that link to friends.
 
-To update the site later, upload a new `index.html` over the old one.
+To update the site later, upload a new `index.html` (and `samples.js`, if it changed) over the old one.
 
 ## What works with no setup
 
@@ -104,9 +115,9 @@ With these rules, anyone who signs in to your copy with a Google account can rea
 
 ## Things to know
 
-- **What is stored where.** Signed in, your galaxy, display name and saved searches are in your Firebase project under `users/<your account id>`, readable only by you. A copy is cached in the browser for speed and removed when you sign out. Signed out, they are in that browser only. Shared nebulae are in your Firebase project. Your choices in the sample rooms (replies, joins, votes) and nebulae you found while signed out stay in the browser. "Clear my traces" while signed in also erases your account's copy. A Firestore document holds up to 1 MB, which is room for several thousand thoughts. If a galaxy grows past that, saved searches are kept without their results. Thoughts you post in a shared nebula carry your Google profile photo, so others can tell who wrote what. "Hide my profile" posts as "someone" with no photo, but your Google account id is still stored with each post so that only you can edit it.
+- **What is stored where.** Signed in, your galaxy, display name, saved searches and your part in the sample rooms (replies, joins, votes, connections, and whether the samples are shown) are in your Firebase project under `users/<your account id>`, readable only by you. A copy is cached in the browser for speed and removed when you sign out. Signed out, they are in that browser only. Shared nebulae are in your Firebase project. Signed out, your part in the sample rooms and any nebulae you found stay in the browser, and they are set aside (not merged) while you're signed in. Clearing your traces while signed in clears the same things from your account's copy. A Firestore document holds up to 1 MB, which is room for several thousand thoughts. If a galaxy grows past that, saved searches are kept without their results. Thoughts you post in a shared nebula carry your Google profile photo, so others can tell who wrote what (people without a photo get the first letter of their name). Your recent searches and the pulls/spread toggles follow your account; stars you've dragged stay in that browser. "Hide my profile" posts as "someone" with no photo, but your Google account id is still stored with each post so that only you can edit it.
 - **The open sky sends your search words to the sources that are switched on.** You can switch sources off under **searches**.
 - **Theme grouping is simple.** Results are gathered around the words they share. It runs in the browser and makes no extra requests.
 - **Free limits.** The Spark plan has daily read and write quotas. A group of friends will not come close, but when a quota runs out Firebase pauses until the next day rather than charging.
-- **Testing.** The live sources and the real Firebase service could not be reached from where this was built. The search code was tested against stand-in responses in the documented shapes, and sign-in and rooms against a stand-in for Firebase. If a source doesn't answer, the page says so and the doorways still work.
+- **Testing.** There is no automated test suite. Changes are checked by hand in a browser against the live sources and the real Firebase project, including two signed-in accounts for shared rooms. If a source doesn't answer, the page says so and the doorways still work.
 - **If someone is struggling.** A thought with crisis language is not placed. The page points to <https://findahelpline.com> and to 988 in Canada and the US instead.

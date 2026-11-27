@@ -15,7 +15,9 @@ window.GRAY_ZONE_FIREBASE = {
   appId: "1:538973620675:web:5868b92efa91939946d576"
 };
 </script>
-<meta name="description" content="a place for thoughts that aren't finished yet.">
+<meta name="description" content="a space for unfinished thoughts.">
+<link rel="icon" type="image/svg+xml" href="graphics/logomark01/favicon.svg">
+<meta name="theme-color" content="#1f1f20">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
@@ -30,6 +32,7 @@ window.GRAY_ZONE_FIREBASE = {
   --black: #0e0e0f;       /* black accent */
   --line: rgba(255, 255, 255, .17);
   --soft: rgba(255, 255, 255, .08);
+  --new: #e0574f;   /* the only colour: something new */
   --panel: rgba(24, 24, 25, .9);
   --font: 'JetBrains Mono', ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
   --panel-w: 384px;
@@ -86,8 +89,8 @@ a { color: var(--ink); text-underline-offset: 3px; text-decoration-thickness: 1p
   #menuBtn { min-width: 19ch; text-align: right; }   /* "nebulae", "constellations", "searches": one width, so switching spaces doesn't nudge the tabs */
 }   /* the header stays put; the panel opens beneath it */
 .mark { display: flex; align-items: center; gap: 10px; color: var(--ink); letter-spacing: .34em; font-size: 12px; }
-.mark i { width: 7px; height: 7px; border: 1px solid var(--ink); border-radius: 50%; position: relative; }
-.mark i::after { content: ''; position: absolute; inset: 2px; background: var(--ink); border-radius: 50%; opacity: .7; }
+.mark svg { width: 14px; height: 14px; flex: none; }   /* the logomark (graphics/logomark01/mark.svg), drawn inline */
+.lmark { width: 22px; height: 22px; color: var(--mid); margin-bottom: 4px; }   /* the welcome card's quiet mono mark (mark-mono-white.svg) */
 .nav { display: flex; gap: 18px; align-items: center; position: relative; }
 body[data-mode="landing"] .map-only, body[data-mode="drift"] .map-only, body[data-mode="compose"] .map-only { opacity: 0; pointer-events: none; visibility: hidden; }
 .map-only { transition: opacity .8s, visibility .8s; }
@@ -128,7 +131,7 @@ form:focus-within .rule { background-size: 100% 100%; }
   .wander::after, .spaces .link::after, .newhere::after { content: ''; position: absolute; inset: -9px -4px; }
   .spaces { gap: 12px; margin-top: 4px; } .newhere { margin-top: 8px; } }
 @keyframes rise { from { opacity: 0; transform: translateY(8px); filter: blur(4px); } to { opacity: 1; transform: none; filter: none; } }
-.landing.first .prompt { animation: rise 1.6s .5s both; }
+.landing.first .prompt, .landing.first .lmark { animation: rise 1.6s .5s both; }
 .landing.first #mind, .landing.first .rule { animation: rise 1.6s 1s both; }
 .landing.first .under, .landing.first .wander, .landing.first .spaces, .landing.first .newhere, .landing.first .landing-x { animation: rise 1.6s 1.7s both; }
 .top { animation: rise 1.6s .2s both; }
@@ -234,7 +237,44 @@ dialog.about { width: min(620px, calc(100% - 32px)); }
 .ways-h { color: var(--ink); font-size: 12px; font-weight: 400; letter-spacing: .1em; }
 .ways { gap: 8px 16px; line-height: 1.65; }
 .ways b { font-weight: 400; color: var(--mid); white-space: nowrap; }
-#aboutTitle:focus { outline: none; }
+#helpTitle:focus, #tourTitle:focus { outline: none; }
+.brand { position: relative; }
+.acard { position: absolute; z-index: 8; top: calc(100% + 12px); left: -4px; width: min(320px, calc(100vw - 32px)); padding: 14px 16px; background: rgba(22, 22, 23, .97); border: 1px solid var(--line);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); color: var(--mid); font-size: 12px; line-height: 1.7; display: flex; flex-direction: column; gap: 8px;
+  opacity: 0; visibility: hidden; transform: translateY(-4px); transition: opacity .25s, transform .25s, visibility .25s; }
+.brand.show .acard { opacity: 1; visibility: visible; transform: none; }
+.acard-t { color: var(--ink); font-size: 13px; letter-spacing: .04em; }
+.acard .dim { color: var(--dim); }
+.acard-l { display: flex; gap: 18px; margin-top: 2px; }
+.hsecs { gap: 2px 18px; }
+.hsec { display: flex; flex-direction: column; gap: 14px; }
+.hsec[hidden] { display: none; }
+@media (pointer: coarse) { .keysonly { display: none; } }
+.legend { display: grid; grid-template-columns: 22px 1fr; gap: 9px 12px; align-items: center; color: var(--dim); font-size: 12px; line-height: 1.5; }
+.legend > :nth-child(odd) { justify-self: center; margin: 0; }
+.sw { position: relative; display: block; width: 6px; height: 6px; border-radius: 50%; background: var(--ink); box-shadow: 0 0 8px 2px rgba(255, 255, 255, .26); }
+.sw.reply { width: 4px; height: 4px; opacity: .7; box-shadow: 0 0 5px 1px rgba(255, 255, 255, .16); }
+.sw.mine { outline: 1px solid rgba(232, 232, 228, .5); outline-offset: 3px; }
+.sw.web { width: 4px; height: 4px; }
+.sw.web::before, .sw.web::after { content: ''; position: absolute; left: 50%; top: 50%; background: var(--ink); opacity: .62; transform: translate(-50%, -50%); }
+.sw.web::before { width: 15px; height: 1px; } .sw.web::after { width: 1px; height: 15px; }
+.sw.new { animation: breathe 2.6s ease-in-out infinite; }
+@keyframes breathe { 50% { box-shadow: 0 0 14px 7px rgba(255, 255, 255, .42); } }
+.sw.door { width: 7px; height: 7px; background: none; border: 1px solid var(--mid); box-shadow: none; }
+.sw.start { width: 10px; height: 10px; background: none; border: 1px dashed var(--mid); box-shadow: none; }
+dialog.tour { margin: max(16px, 14vh) auto auto; }   /* steps differ in length: pinned from the top, the card doesn't jump */
+.tour-k { display: flex; gap: 7px; }
+.tour-k i { width: 5px; height: 5px; border-radius: 50%; border: 1px solid var(--dim); }
+.tour-k i.on { background: var(--ink); border-color: var(--ink); }
+.tour-b { display: flex; flex-direction: column; gap: 12px; min-height: 9.5em; }
+.tour-b .legend { margin-top: 4px; }
+.tour-nav { gap: 10px 18px; }
+.clear { display: flex; flex-direction: column; gap: 10px; }
+.clear label { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; align-items: baseline; color: var(--mid); cursor: pointer; }
+.clear label small { grid-column: 2; color: var(--dim); font-size: 12px; line-height: 1.55; }
+.clear input { accent-color: #e8e8e4; margin: 0; }
+.clear .sub { margin-left: 24px; display: flex; flex-direction: column; gap: 6px; }
+.clear .sub .row { gap: 4px 18px; }
 @media (pointer: coarse) { .keys:not(.ways) { display: none; } }   /* keyboard shortcuts mean nothing on a touch screen */
 .field label.ask { color: var(--mid); }
 .notes .asked { color: var(--dim); }
@@ -242,6 +282,7 @@ dialog.about { width: min(620px, calc(100% - 32px)); }
 body[data-space="sky"] #pullBtn { display: none; }   /* search results have no ends to lean toward */
 .avatar { width: 14px; height: 14px; border-radius: 50%; vertical-align: -2px; margin-right: 6px; filter: grayscale(1); }
 .avatar.mono { display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--mid); color: var(--ink); font-size: 9px; line-height: 1; vertical-align: 0; }
+.avatar.mono.seed { border-style: dotted; color: var(--mid); }
 .thought.small { font-size: 13px; color: var(--mid); }
 .list li.reply { margin-left: 18px; }
 .list li.reply > button::before { content: '↳ '; color: var(--dim); }
@@ -276,6 +317,11 @@ body[data-space="sky"] #pullBtn { display: none; }   /* search results have no e
 
 /* ── three scales ── */
 .scales { display: flex; gap: 16px; align-items: center; }
+.scales .b { position: relative; }
+.nd { display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: var(--new); margin: 0 6px 0 0; vertical-align: 1px; }
+.scales .b .nd { position: absolute; top: 2px; right: -4px; margin: 0; opacity: 0; transition: opacity .4s; }
+.scales .b.new .nd { opacity: 1; }
+.menu .nd { margin: 0 0 0 7px; }
 .scales .b[aria-pressed="true"]::before { content: '[ '; } .scales .b[aria-pressed="true"]::after { content: ' ]'; }
 .scales .b[aria-pressed="true"] { border-bottom: 1px solid var(--ink); }
 .nav { gap: 16px; }
@@ -306,6 +352,11 @@ body[data-mode="map"][data-space="sky"] .skybar { display: flex; animation: rise
 .menu button[aria-pressed="false"]::before { content: ' '; white-space: pre; }
 .menu button[aria-pressed] { justify-content: flex-start; gap: 6px; }
 .menu button[aria-pressed="false"] { color: var(--dim); text-decoration: line-through; }
+.menu button.switch[aria-pressed] { justify-content: space-between; color: var(--mid); text-decoration: none; }   /* show/hide samples: a switch, not a strike-through */
+.menu button.switch[aria-pressed]::before { content: none; }
+.menu button.switch::after { content: ''; flex: none; width: 24px; height: 12px; border-radius: 7px; border: 1px solid var(--line); transition: background .25s, border-color .25s;
+  background: radial-gradient(circle at 6px 50%, var(--dim) 3.5px, transparent 4px); }
+.menu button.switch[aria-pressed="true"]::after { border-color: var(--mid); background: radial-gradient(circle at 17px 50%, var(--ink) 3.5px, transparent 4px); }
 .m-head { padding: 6px 16px 4px; color: var(--dim); font-size: 11px; letter-spacing: .16em; }
 .m-note { padding: 4px 16px 8px; color: var(--dim); font-size: 12px; }
 dialog#you { width: min(460px, calc(100% - 32px)); }
@@ -326,16 +377,24 @@ dialog#you { width: min(460px, calc(100% - 32px)); }
 <div class="vignette" aria-hidden="true"></div>
 
 <header class="top">
-  <button class="mark" id="mark" type="button" aria-label="gray zone. about this place"><i aria-hidden="true"></i><span>gray zone</span></button>
+  <div class="brand">
+    <button class="mark" id="mark" type="button" aria-label="gray zone. refresh the page" aria-describedby="aboutCard"><svg viewBox="0 0 100 100" aria-hidden="true"><rect x="41" y="8" width="12" height="30" fill="var(--ink)"/><rect x="41" y="62" width="12" height="30" fill="var(--ink)"/><rect x="5" y="44" width="30" height="12" fill="var(--ink)"/><rect x="60.5" y="45.5" width="33" height="9" fill="var(--new)" stroke="var(--new)" stroke-width="3"/></svg><span>gray zone</span></button>
+    <div class="acard" id="aboutCard">
+      <p class="acard-t">a space for unfinished thoughts</p>
+      <p>your galaxy keeps your own thoughts. nebulae are small rooms around one question. the open sky is the wider web.</p>
+      <p class="dim">stars brighten as you refine them. nothing here is counted.</p>
+      <p class="acard-l"><button class="link" type="button" id="acHelp">help</button><button class="link" type="button" id="acTour">take the tour</button></p>
+    </div>
+  </div>
   <div class="scales map-only" role="group" aria-label="where you are">
-    <button class="b" type="button" data-space="galaxy" aria-pressed="false">galaxy</button>
-    <button class="b" type="button" data-space="nebulae" aria-pressed="false">nebulae</button>
-    <button class="b" type="button" data-space="sky" aria-pressed="false">open sky</button>
+    <button class="b" type="button" data-space="galaxy" aria-pressed="false">galaxy<span class="nd" aria-hidden="true"></span></button>
+    <button class="b" type="button" data-space="nebulae" aria-pressed="false">nebulae<span class="nd" aria-hidden="true"></span></button>
+    <button class="b" type="button" data-space="sky" aria-pressed="false">open sky<span class="nd" aria-hidden="true"></span></button>
   </div>
   <nav class="nav" aria-label="main">
     <button class="b map-only" id="menuBtn" type="button" aria-expanded="false" aria-controls="menu">list</button>
     <button class="b" id="youBtn" type="button">you</button>
-    <button class="b" id="aboutBtn" type="button">about</button>
+    <button class="b" id="helpBtn" type="button">help</button>
     <div class="menu" id="menu" hidden></div>
   </nav>
 </header>
@@ -352,6 +411,7 @@ dialog#you { width: min(460px, calc(100% - 32px)); }
   <form id="compose" novalidate>
     <button class="x landing-x" id="landingX" type="button" aria-label="close and look around">×</button>
     <p class="target" id="target" hidden>adding to <span id="targetName"></span> <button type="button" class="link" id="targetClear">put it in my galaxy instead</button></p>
+    <svg class="lmark" viewBox="0 0 100 100" aria-hidden="true"><rect x="41" y="8" width="12" height="30" fill="currentColor"/><rect x="41" y="62" width="12" height="30" fill="currentColor"/><rect x="5" y="44" width="30" height="12" fill="currentColor"/><rect x="60.5" y="45.5" width="33" height="9" fill="none" stroke="currentColor" stroke-width="3"/></svg>
     <label class="prompt" for="mind">what's on your mind today?</label>
     <textarea id="mind" rows="1" maxlength="600" placeholder="start anywhere. it doesn't need to be finished." autocomplete="off"></textarea>
     <div class="rule" aria-hidden="true"></div>
@@ -387,34 +447,82 @@ dialog#you { width: min(460px, calc(100% - 32px)); }
 
 <aside id="panel" tabindex="-1" aria-label="details" aria-hidden="true"></aside>
 
-<dialog id="about" class="about" aria-labelledby="aboutTitle">
+<dialog id="help" class="about help" aria-labelledby="helpTitle">
   <div class="col">
-    <h2 id="aboutTitle" tabindex="-1">the gray zone</h2>
-    <p><b>a place for thoughts that aren't finished yet.</b><br>
-    your galaxy keeps them. nebulae are small rooms. the open sky is the wider web.<br>
-    stars brighten as you refine them. nothing here is counted.</p>
-    <h3 class="ways-h">how it works</h3>
-    <div class="keys ways">
-      <b>galaxy</b><span>your own thoughts. they gather by the words they share, and brighten as you refine them.</span>
-      <b>nebulae</b><span>small rooms around one question, with two ends named. glance, join, add a thought, reply.</span>
-      <b>open sky</b><span>send a thought outward to wikipedia, papers, books, hacker news and the archive. keep what helps.</span>
+    <h2 id="helpTitle" tabindex="-1">help</h2>
+    <div class="row hsecs" role="group" aria-label="help sections">
+      <button class="b" type="button" data-h="start" aria-pressed="true">start here</button>
+      <button class="b" type="button" data-h="controls" aria-pressed="false">controls</button>
+      <button class="b keysonly" type="button" data-h="keys" aria-pressed="false">keys</button>
+      <button class="b" type="button" data-h="traces" aria-pressed="false">your traces</button>
     </div>
-    <p class="note">a thought can travel: search outward from your galaxy, keep what you find, share a copy to a room.</p>
-    <div class="keys" aria-label="keys">
-      <kbd>drag · scroll</kbd><span>pan and zoom</span>
-      <kbd>arrows</kbd><span>move between stars</span>
-      <kbd>enter</kbd><span>open a star</span>
-      <kbd>1 · 2 · 3</kbd><span>galaxy, nebulae, open sky</span>
-      <kbd>n</kbd><span>new thought</span>
-      <kbd>p</kbd><span>pulls: which end each thought leans toward</span>
-      <kbd>0</kbd><span>everything here</span>
-      <kbd>esc</kbd><span>close</span>
-    </div>
-    <p class="note" id="protoNote">this is a prototype. the sample nebulae are seeded voices, and what you write stays in this browser.</p>
-    <p class="note" id="storeNote" hidden>this browser isn't letting the page save, so this visit won't be remembered.</p>
-    <div class="row">
-      <button class="b" id="aboutClose" type="button">close</button>
-      <button class="b" id="wipe" type="button">clear my traces</button>
+    <section class="hsec" data-h="start">
+      <p><b>a space for unfinished thoughts.</b><br>your galaxy keeps your own thoughts. nebulae are small rooms around one question. the open sky is the wider web. stars brighten as you refine them. nothing here is counted.</p>
+      <h3 class="ways-h">three ways in</h3>
+      <div class="keys ways">
+        <b>write</b><span>+ thought, or n. it lands in your galaxy and gathers with the thoughts it shares words with.</span>
+        <b>glance</b><span>open a nebula and read what's there. join it to add a thought, reply or resonate.</span>
+        <b>look out</b><span>send a thought to the open sky. keep what helps, or bring it into a room.</span>
+      </div>
+      <div class="row"><button class="b" type="button" id="helpTour">take the tour</button></div>
+    </section>
+    <section class="hsec" data-h="controls" hidden>
+      <div class="keys ways">
+        <b>move</b><span>drag empty space to pan. scroll, pinch or double-click to zoom. − + and all sit at the bottom right.</span>
+        <b>open</b><span>click or tap a star, or a group's name. the list, top right, names everything in this space.</span>
+        <b>step</b><span>‹ › in a star's panel walk through its group. on a phone, swipe the panel sideways.</span>
+        <b>tidy</b><span>drag a star with a mouse to move it; reset layout puts things back. spread gives everyone more room.</span>
+        <b>pulls</b><span>in a nebula, each thought slides toward the end it leans to, with a dotted line to show the pull.</span>
+      </div>
+      <h3 class="ways-h">what the stars mean</h3>
+      <div class="legend">
+        <i class="sw"></i><span>a thought: yours in your galaxy, anyone's in a room</span>
+        <i class="sw reply"></i><span>a reply, smaller, beside what it answers</span>
+        <i class="sw mine"></i><span>yours, in a room</span>
+        <i class="sw web"></i><span>from the web: a search result, or a find kept or brought in</span>
+        <i class="sw new"></i><span>new since you last looked, until you open it</span>
+        <i class="nd"></i><span>on galaxy, nebulae or open sky: something new arrived there</span>
+        <i class="sw door"></i><span>a doorway: another site's own search, in a new tab</span>
+        <i class="sw start"></i><span>a place to start, in an empty galaxy</span>
+        <span class="avatar mono seed" aria-hidden="true">m</span><span>a sample voice, seeded so the rooms aren't empty</span>
+      </div>
+    </section>
+    <section class="hsec" data-h="keys" hidden>
+      <div class="keys" aria-label="keys">
+        <kbd>arrows</kbd><span>move between stars</span>
+        <kbd>enter · space</kbd><span>open the star you're on</span>
+        <kbd>shift + arrows</kbd><span>pan</span>
+        <kbd>+ · −</kbd><span>zoom in, out</span>
+        <kbd>0</kbd><span>everything here</span>
+        <kbd>1 · 2 · 3</kbd><span>galaxy, nebulae, open sky</span>
+        <kbd>n</kbd><span>new thought</span>
+        <kbd>p</kbd><span>pulls</span>
+        <kbd>s</kbd><span>spread</span>
+        <kbd>?</kbd><span>this help</span>
+        <kbd>esc</kbd><span>close, or step back</span>
+        <kbd>↑ ↓</kbd><span>move through the list</span>
+        <kbd>ctrl + enter</kbd><span>send a reply</span>
+      </div>
+    </section>
+    <section class="hsec" data-h="traces" hidden>
+      <p class="note" id="protoNote">this is a prototype. what you write stays in this browser.</p>
+      <p class="note">which new stars you've seen, and where you've moved stars, stay in this browser.</p>
+      <p class="note" id="storeNote" hidden>this browser isn't letting the page save, so this visit won't be remembered.</p>
+      <div class="row"><button class="b" type="button" id="helpClear">clear some or all of it</button></div>
+    </section>
+    <div class="row"><button class="b" id="helpClose" type="button">close</button></div>
+  </div>
+</dialog>
+
+<dialog id="tour" class="about tour" aria-labelledby="tourTitle">
+  <div class="col">
+    <p class="tour-k" id="tourDots" aria-hidden="true"></p>
+    <h2 id="tourTitle" tabindex="-1"></h2>
+    <div class="tour-b" id="tourBody"></div>
+    <div class="row tour-nav">
+      <button class="b" id="tourPrev" type="button">back</button>
+      <button class="b solid" id="tourNext" type="button">next</button>
+      <button class="link" id="tourClose" type="button">close</button>
     </div>
   </div>
 </dialog>
@@ -426,9 +534,12 @@ dialog#you { width: min(460px, calc(100% - 32px)); }
     <div class="row"><button class="b" id="hideBtn" type="button" aria-pressed="false">hide my profile</button></div>
     <p class="note" id="hideNote"></p>
     <div class="sec" id="acct"></div>
-    <div class="sec">
-      <div class="row"><button class="b" id="samplesBtn" type="button" aria-pressed="true">show sample nebulae</button></div>
-      <p class="note">the sample nebulae are seeded voices, there so the sky isn't empty.</p>
+    <div class="sec" id="clearSec">
+      <h3>clear traces</h3>
+      <div class="clear" id="clearOpts"></div>
+      <p class="note">your thoughts in shared nebulae stay. remove those from each star.</p>
+      <div class="row"><button class="b" id="wipe" type="button">clear what's ticked</button></div>
+      <p class="note warn" id="clearNote" role="status"></p>
     </div>
     <div class="row"><button class="b" id="youClose" type="button">close</button></div>
   </div>
@@ -453,6 +564,7 @@ dialog#you { width: min(460px, calc(100% - 32px)); }
   </form>
 </dialog>
 
+<script src="samples.js?v=7"></script>
 <script>
 (() => {
 'use strict';
@@ -465,104 +577,22 @@ const easeOut = t => 1 - Math.pow(1 - t, 3);
 function hash(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } h ^= h >>> 16; h = Math.imul(h, 0x85ebca6b); h ^= h >>> 13; h = Math.imul(h, 0xc2b2ae35); h ^= h >>> 16; return h >>> 0; }
 const rnd = s => hash(s) / 4294967296;
 
-const SEED_CLUSTERS = [
-  { id: 'self', name: 'the performed self', q: 'who are you when no one is counting?', poles: ['curated', 'unguarded'], x: -700, y: -330, px: -300, py: -1010,
-    terms: 'online profile post posting posted authentic authenticity fake perform performing performance persona curate curated feed instagram social media followers audience selfie caption brand image mask honest genuine watched private privacy public internet digital filter account share sharing identity self selves pretend pretending' },
-  { id: 'enough', name: 'enough', q: 'how would you know you had enough?', poles: ['reach', 'rest'], x: -860, y: 150, px: -300, py: -530,
-    terms: 'ambition ambitious career success successful goal goals enough content contentment rest resting hustle work working job jobs achieve achievement striving strive promotion money salary burnout tired productivity productive lazy driven settle satisfied grind potential purpose finish win winning comparing compare behind ahead happy happiness comfortable stuck settling next' },
-  { id: 'made', name: 'who a made thing belongs to', q: 'when does a made thing stop being yours?', poles: ["the maker's", "everyone's"], x: 430, y: -560, px: 300, py: -310,
-    terms: 'art artist artists ownership owner owned owns copyright credit steal stolen stealing borrow borrowed original originality copy copied painting paint song songs music draw drawing drew creator maker fan fanart style sell sold license remix sample mural plagiarism royalties character comic comics design gallery' },
-  { id: 'city', name: 'living among strangers', q: 'what do we owe the people we pass every day?', poles: ['closeness', 'distance'], x: 640, y: 400, px: 300, py: 1010,
-    terms: 'city cities urban neighbour neighbor neighbours neighbors neighbourhood neighborhood subway transit street streets apartment rent stranger strangers crowd crowded noise downtown anonymous anonymity commute building landlord park store sidewalk town hometown toronto bus streetcar condo density roommate block corner' },
-  { id: 'machine', name: 'machine hands', q: 'if a machine can make it, what was the making for?', poles: ['instrument', 'author'], x: -170, y: -620, px: 300, py: -790,
-    terms: 'ai machine machines model models algorithm generate generated generative prompt prompting chatgpt robot automation automated creativity creative tool tools computer software human craft skill training trained data artificial intelligence llm output camera sketch replace replaced' },
-  { id: 'friends', name: 'the long quiet between friends', q: 'is a friendship something you keep, or something that keeps?', poles: ['tending', 'drifting'], x: 90, y: 640, px: -300, py: 790,
-    terms: 'friend friends friendship friendships adult adulthood text texting texted call called reach drift drifted drifting group chat hang hangout calendar busy lonely loneliness wedding moved kids thirty twenties catch touch connection birthday reunion roommates bestfriend' },
-  { id: 'doubt', name: 'holding without knowing', q: 'what do you hold without being sure?', poles: ['trust', 'doubt'], x: -480, y: 520, px: -300, py: 310,
-    terms: 'belief beliefs believe believed believing faith doubt doubts god religion religious pray prayer praying church certain certainty trust truth science meaning spiritual soul atheist agnostic universe death afterlife question answer unsure hymn hymns temple mosque ritual' },
-  { id: 'hours', name: 'empty hours', q: 'what happens in you when nothing is happening?', poles: ['filled', 'empty'], x: 790, y: -140, px: 300, py: 530,
-    terms: 'attention bored boring boredom phone scroll scrolling focus focused distract distraction distracted screen screens notification notifications read reading quiet silence stimulation idle wait waiting mind wander daydream concentrate dopamine apps tiktok empty nothing restless' },
-];
-
-// [cluster, text, stance −1..1, settledness 0..1, index of the thought it replies to]
-const SEED_THOUGHTS = [
-  ['self', 'i deleted a caption three times yesterday because it sounded like me trying to sound like me.', .1, .35],
-  ['self', "every profile is a small museum of who we wanted to be that year. i don't think that's dishonest. museums are edited too.", -.62, .82],
-  ['self', 'a museum has a curator who admits it. feeds pretend nobody chose anything.', .3, .5, 1],
-  ['self', 'the most honest thing i ever posted was a typo i left in.', .72, .3],
-  ['self', "i'm not sure “authentic” means anything once you know you're being watched. even alone, i narrate.", -.2, .62],
-  ['self', "being private used to be the default and now it reads as a statement. i just don't have anything to announce.", .5, .7],
-  ['self', 'the narrating voice might just be thinking, though. it was there before the audience was.', 0, .4, 4],
-  ['self', "my friend is funnier in the group chat than in person and i can't decide which one is the real her. maybe both. maybe the chat one just had time.", -.4, .45],
-
-  ['enough', "i keep moving the finish line and then being surprised that i'm tired.", .3, .55],
-  ['enough', "contentment feels like a thing i'm supposed to earn first. which is probably the whole problem.", .5, .7],
-  ['enough', "people say you can rest when it's done, but i've never met the “it” that gets done.", .62, .4],
-  ['enough', "i don't trust my own calm. half the time it's avoidance wearing a nicer coat.", -.5, .6],
-  ['enough', 'and half the time ambition is anxiety with a business plan. hard to tell them apart from the inside.', .08, .5, 11],
-  ['enough', "my dad worked one job for thirty years and seemed fine. i've had five and a personal brand. unclear who won.", .2, .76],
-  ['enough', "wanting more isn't greed if what you want more of is skill. i think. i'd like that to be true.", -.7, .35],
-  ['enough', "some days enough is a number. some days it's whether i ate lunch sitting down.", .4, .3],
-
-  ['made', "once a song has been played at someone's wedding it isn't really the songwriter's anymore.", .7, .8],
-  ['made', 'i drew a character at fourteen and she still feels like mine in a way no contract could describe.', -.8, .6],
-  ['made', "it's still the songwriter's rent, though. meaning can be shared. the invoice can't.", -.4, .55, 16],
-  ['made', 'fan art is the sincerest form of trespassing.', .2, .4],
-  ['made', 'credit matters more to me than control. use it, change it, just say where it came from.', .32, .72],
-  ['made', 'every style is borrowed. the question is whether you borrowed from the dead or from someone still paying rent.', -.1, .5],
-  ['made', 'i sold a painting and felt robbed, which makes no sense. i set the price.', -.52, .3],
-  ['made', 'a mural that gets tagged over: is that vandalism, or the city replying?', .5, .36],
-
-  ['city', "i've lived under the same neighbour for four years and know her only by her footsteps. it's a kind of intimacy.", .3, .7],
-  ['city', "the subway is the only place i'm pressed against people i'll never speak to. i find it weirdly restful.", .62, .6],
-  ['city', 'a city is a machine for not being lonely, and mostly it makes loneliness in bulk.', .1, .5],
-  ['city', 'bulk loneliness is at least shared. in my hometown i was lonely by myself.', -.2, .45, 26],
-  ['city', "the guy at the corner store knows my order. that's the entire reason i haven't moved.", -.72, .8],
-  ['city', "anonymity is what i came here for. now i'd pay extra rent for someone to notice when i'm gone a week.", -.5, .55],
-  ['city', "everyone complains about the noise, but the silence at my parents' house keeps me awake.", .2, .3],
-  ['city', 'the places you could sit for free keep closing. the ones left charge nine dollars to stay.', -.3, .6],
-
-  ['machine', "i used a model to finish a sketch and felt like i'd asked someone else to chew my food.", -.6, .6],
-  ['machine', "the camera didn't kill painting. it told painting what it was for. maybe this does the same for drawing.", -.5, .8],
-  ['machine', "the camera didn't learn from every painting ever made without asking, though.", .1, .5, 33],
-  ['machine', "what i'd miss isn't the output. it's being bad at something for a long time.", -.2, .7],
-  ['machine', "some of what it makes moves me, and i don't know where to put that.", .6, .35],
-  ['machine', 'if nobody meant it, can it mean anything? then again i find meaning in clouds.', .4, .5],
-  ['machine', 'prompting feels like commissioning, not making. which is fine. patrons are part of art history too.', .3, .55],
-  ['machine', "my students ask why they should learn to draw hands. i say: so you know when they're wrong. i'm not sure that's enough of a reason.", -.4, .4],
-
-  ['friends', 'we used to talk every day and now we send each other videos. i think it still counts. i think.', .3, .5],
-  ['friends', 'nobody tells you that after thirty, friendship is mostly logistics.', -.4, .75],
-  ['friends', 'the logistics are the love, though. someone checked three calendars to see you.', -.7, .6, 41],
-  ['friends', "i have friends i'd take a bullet for and haven't called in a year.", .6, .65],
-  ['friends', 'making a new friend as an adult is dating without the script. who texts first. how soon is too soon.', -.2, .4],
-  ['friends', "some friendships were really just proximity, and that's okay. the proximity was real.", .7, .8],
-  ['friends', "i'm the one who always reaches out. i can't tell if that makes me the good friend or the only one who needs it.", -.5, .35],
-  ['friends', 'my oldest friend and i have nothing in common anymore except each other.', .1, .55],
-
-  ['doubt', 'i stopped believing years ago but i still hum the hymns while doing dishes. something stayed.', .2, .7],
-  ['doubt', "doubt isn't the opposite of faith. certainty is.", -.1, .85],
-  ['doubt', "nice line, but most believers i know aren't certain. they just keep showing up.", -.5, .5, 49],
-  ['doubt', 'i envy people who can pray. not what they believe. just that they have somewhere to send it.', -.3, .6],
-  ['doubt', "i trust science the way i trust a bridge. i didn't check the math. i watch other people cross.", -.42, .55],
-  ['doubt', "every time i'm sure about something i try to remember how sure i was at nineteen.", .7, .65],
-  ['doubt', 'my grandmother believed everything and it made her kind. my uncle doubts everything and it made him tired.', -.6, .4],
-  ['doubt', "maybe i don't need an answer about god. maybe i need a better question.", .3, .3],
-
-  ['hours', "i can't remember the last time i was bored for a full ten minutes. my best ideas used to live there.", .6, .7],
-  ['hours', "my phone isn't the problem. it's whatever i'm avoiding when i pick it up.", .2, .8],
-  ['hours', "sure, but it's very convenient that the avoiding machine is always in my pocket.", .5, .5, 57],
-  ['hours', "waiting rooms used to be where you met your own mind. now nobody's in the room.", .7, .55],
-  ['hours', 'i read forty pages on the train today and it felt like getting away with something.', .4, .35],
-  ['hours', 'boredom is overrated by people who have never worked a nine-hour retail shift.', -.7, .6],
-  ['hours', "i don't want less stimulation, i want better stimulation. a good film fills me. scrolling just occupies me.", -.5, .65],
-  ['hours', 'attention is the only thing i own that everyone is bidding on.', .1, .45],
-];
-
-const SEED_PROPOSALS = [
-  { id: 'p-city', c: 'city', name: 'strangers, nearby', lean: .58 },
-  { id: 'p-machine', c: 'machine', name: 'the borrowed hand', lean: .34 },
-];
+const validPoles = p => (Array.isArray(p) && p.length === 2 && p.every(s => typeof s === 'string' && s.trim()) ? p.map(s => s.trim().slice(0, 18)) : null);
+// the sample nebulae and their five recurring voices live in samples.js (plain data). missing or malformed, there are simply no samples.
+const SAMPLES = (() => {
+  const d = window.GRAY_ZONE_SAMPLES, none = { cast: new Map(), rooms: [], thoughts: [], proposals: [] };
+  if (!d || typeof d !== 'object' || !Array.isArray(d.rooms) || !Array.isArray(d.thoughts)) return none;
+  const s = v => (typeof v === 'string' ? v : ''), num = (v, a, b, f) => (v != null && isFinite(+v) ? clamp(+v, a, b) : f);
+  const cast = new Map((Array.isArray(d.cast) ? d.cast : []).filter(p => p && s(p.id)).map(p => [p.id, (s(p.name) || p.id).slice(0, 24)]));
+  const rooms = d.rooms.filter(r => r && s(r.id) && s(r.name)).map(r => ({ id: r.id, name: r.name, q: s(r.q), poles: validPoles(r.poles), terms: s(r.terms), x: +r.x || 0, y: +r.y || 0, px: +r.px || 0, py: +r.py || 0 }));
+  const ids = new Set(rooms.map(r => r.id)), seen = new Set();
+  const thoughts = d.thoughts.filter(t => t && s(t.id) && ids.has(t.c) && s(t.text) && !seen.has(t.id) && seen.add(t.id))
+    .map(t => ({ id: t.id, c: t.c, by: s(t.by), text: t.text.slice(0, 600), stance: num(t.stance, -1, 1, 0), settled: num(t.settled, .1, 1, .3), re: seen.has(t.re) ? t.re : null, ago: num(t.ago, 0, 3650, 10) }));
+  const proposals = (Array.isArray(d.proposals) ? d.proposals : []).filter(p => p && s(p.id) && ids.has(p.c) && s(p.name)).map(p => ({ id: p.id, c: p.c, name: p.name.slice(0, 40), lean: num(p.lean, 0, 1, .5) }));
+  return { cast, rooms, thoughts, proposals };
+})();
+// what an older version seeded (eight rooms, thoughts s0…s63, two renames): cleared from storage once
+const OLD_SEED = new Set(['self', 'enough', 'made', 'city', 'machine', 'friends', 'doubt', 'hours', 'p-city', 'p-machine']), oldSeed = id => OLD_SEED.has(id) || /^s\d+$/.test(id);
 
 // shown as the composer's placeholder: a question, a topic, a hobby argument, a belief in motion
 const EXAMPLES = ['is it worth moving cities for work?', 'why do i keep putting off the things i care about?', 'how does sleep shape memory?', 'where did all the third places go?',
@@ -689,22 +719,34 @@ function fixStore(s) {
   O(s.view, 'pos');
   A(s.galaxy, 'clusters'); A(s.galaxy, 'thoughts'); A(s.rooms, 'clusters'); A(s.rooms, 'thoughts'); A(s.rooms, 'proposals'); A(s.sky, 'saved'); A(s.sky, 'recent');
   O(s.rooms, 'joined'); O(s.rooms, 'resonated'); O(s.rooms, 'votes'); O(s.rooms, 'links'); O(s.sky, 'sources');
+  if (s.rooms.v !== 2) {   // once: the old sample rooms are gone, and so is everything that pointed at them
+    const r = s.rooms, gone = new Set(r.thoughts.filter(d => d && OLD_SEED.has(d.c)).map(d => d.id)), old = id => oldSeed(id) || gone.has(id);
+    r.thoughts = r.thoughts.filter(d => d && !gone.has(d.id)); r.proposals = r.proposals.filter(p => p && !OLD_SEED.has(p.c));
+    for (const k of ['joined', 'resonated', 'votes', 'links']) for (const id of Object.keys(r[k])) if (old(id)) delete r[k][id];
+    for (const id of Object.keys(r.links)) if (Array.isArray(r.links[id])) r.links[id] = r.links[id].filter(x => !old(x));
+    for (const id of Object.keys(s.view.pos)) if (old(id)) delete s.view.pos[id];
+    r.v = 2;
+  }
+  // what's new (this browser only): since = when this browser started noticing; at = when you last looked at each space;
+  // open = new stars you've opened; fresh = galaxy stars that landed while you were elsewhere
+  O(s.view, 'seen'); const sn = s.view.seen; if (!(sn.since > 0)) sn.since = Date.now(); O(sn, 'at'); O(sn, 'open'); O(sn, 'fresh');
+  for (const k of ['open', 'fresh']) for (const id of Object.keys(sn[k])) if (!(sn[k][id] > Date.now() - 30 * DAY)) delete sn[k][id];
   return s;
 }
 fixStore(store);
-/* signed in, the galaxy, profile and saved searches belong to the google account (firestore users/{uid}).
-   signed out, they belong to this browser (the guest store). the two never mix. nebulae state stays in this browser either way. */
+/* signed in, the galaxy, profile, saved searches and your part in the sample and browser rooms belong to the google account (firestore users/{uid}).
+   signed out, they belong to this browser (the guest store). the two never mix. dragged stars (view) stay in this browser either way. */
 const UKEY = id => KEY + '.u.' + id;
 const acct = { uid: null, guest: null, unsub: null, timer: 0, dirty: false, loaded: false, big: false, tab: uid('t'), wait: 0 };
-const synced = (s = store) => ({ profile: s.profile, galaxy: s.galaxy, sky: { saved: s.sky.saved, sources: s.sky.sources, group: s.sky.group, recent: s.sky.recent } });
-function save() {
+const synced = (s = store) => ({ profile: s.profile, galaxy: s.galaxy, rooms: s.rooms, sky: { saved: s.sky.saved, sources: s.sky.sources, group: s.sky.group, recent: s.sky.recent } });
+function save(local) {   // local: only this browser's view changed, so the account isn't sent anything
   if (storageOK) {
     try {
       localStorage.setItem(KEY, JSON.stringify(acct.uid ? Object.assign({}, store, acct.guest) : store));
       if (acct.uid) localStorage.setItem(UKEY(acct.uid), JSON.stringify(synced()));
     } catch (e) { storageOK = false; $('#storeNote').hidden = false; if (!acct.uid) say("couldn't save. this visit won't be remembered."); }
   }
-  if (acct.uid) { acct.dirty = true; clearTimeout(acct.timer); acct.timer = setTimeout(acctPush, 800); }
+  if (acct.uid && !local) { acct.dirty = true; clearTimeout(acct.timer); acct.timer = setTimeout(acctPush, 800); }
 }
 if (!storageOK) $('#storeNote').hidden = false;
 
@@ -715,8 +757,9 @@ let space = 'galaxy', clusters = spaces.galaxy.clusters, thoughts = spaces.galax
 function setSpace(n) { space = n; ({ clusters, thoughts, byId } = spaces[n]); }
 function inSpace(n, fn) { const p = space; if (p === n) return fn(); setSpace(n); try { return fn(); } finally { setSpace(p); } }
 const portrait = window.innerHeight > window.innerWidth * 1.1;   // tall screens get a two-column sky
-const SLOTS = SEED_CLUSTERS.map(d => (portrait ? { x: d.px, y: d.py } : { x: d.x, y: d.y }));
-const validPoles = p => (Array.isArray(p) && p.length === 2 && p.every(s => typeof s === 'string' && s.trim()) ? p.map(s => s.trim().slice(0, 18)) : null);
+// eight places a group can sit, wide [x, y] and tall [x, y] (the open sky's groups use them)
+const SLOTS = [[-700, -330, -300, -1010], [-860, 150, -300, -530], [430, -560, 300, -310], [640, 400, 300, 1010], [-170, -620, 300, -790], [90, 640, -300, 790], [-480, 520, -300, 310], [790, -140, 300, 530]]
+  .map(([x, y, px, py]) => (portrait ? { x: px, y: py } : { x, y }));
 
 function cname(c) {
   if (c.name) return c.name;
@@ -764,7 +807,7 @@ function persist(t) {
   if (t.kind === 'own') { upsert(store.galaxy.thoughts, { id: t.id, c: t.c, text: t.text, note: t.note, url: t.url, src: t.src, stance: t.stance, settled: t.settled, created: t.created, touched: t.touched, refines: t.refines, oy: t.oy, links: t.links }); return save(); }
   const c = spaces.nebulae.clusters.get(t.c);
   if (c && c.remote) return cloudSetThought(c, t);
-  upsert(store.rooms.thoughts, { id: t.id, c: t.c, text: t.text, stance: t.stance, settled: t.settled, created: t.created, touched: t.touched, re: t.re, refines: t.refines, oy: t.oy }); save();
+  upsert(store.rooms.thoughts, { id: t.id, c: t.c, text: t.text, stance: t.stance, settled: t.settled, created: t.created, touched: t.touched, re: t.re, refines: t.refines, oy: t.oy, url: t.url, src: t.src, note: t.note }); save();
 }
 function saveCluster(c) {
   const d = (c.kind === 'galaxy' ? store.galaxy.clusters : store.rooms.clusters).find(o => o.id === c.id);
@@ -806,8 +849,10 @@ function layout(c, snap) {
   const at = new Map(pts.map(p => [p.t.id, p]));
   for (const p of [...pts].sort((a, b) => a.t.created - b.t.created)) {
     const par = p.t.re && at.get(p.t.re); if (!par || p.fixed) continue;
-    const sibs = m.filter(o => o.re === p.t.re).sort((a, b) => a.created - b.created), k = sibs.indexOf(p.t), a = Math.PI / 2 + (k - (sibs.length - 1) / 2) * .75;
-    p.x = par.x + Math.cos(a) * 38; p.y = par.y + Math.sin(a) * 30;
+    // fanned below, each at its own (steady) slant and distance, so a thread wanders a little instead of dropping in a straight line
+    const sibs = m.filter(o => o.re === p.t.re).sort((a, b) => a.created - b.created), k = sibs.indexOf(p.t), id = p.t.id;
+    const a = Math.PI / 2 + (k - (sibs.length - 1) / 2) * .75 + (rnd(id + 'ra') - .5) * 1.7, d = 32 + rnd(id + 'rd') * 24;
+    p.x = par.x + Math.cos(a) * d * 1.15; p.y = par.y + Math.sin(a) * d * .85;
   }
   const minD = spread ? 58 : 36;   // a final nudge so no two stars sit on top of each other (a dragged star holds its place)
   for (let it = 0; it < 28; it++) for (let i = 0; i < pts.length; i++) for (let j = i + 1; j < pts.length; j++) {
@@ -855,27 +900,39 @@ function newConstellation(tf, name) {   // call inside the galaxy
 }
 function keepOwn(text, extra) {   // quietly file something in the galaxy
   return inSpace('galaxy', () => {
+    clearGhosts();
     const tf = terms(text), r = rankClusters(tf, clusters.values()), c = r.ranked[0] && r.ranked[0].ok ? r.ranked[0].c : newConstellation(tf), now = Date.now();
     const t = addThought(Object.assign({ id: uid('u'), c: c.id, kind: 'own', text, stance: 0, settled: .2, created: now, touched: now, mine: true, oy: 0 }, extra));
     t.oy = pickOy(c, xOf(t, c), null, t); layout(c, true); t.pulse = performance.now(); persist(t); return t;
   });
 }
 
-// build the nebulae (sample rooms, then yours)
-setSpace('nebulae');
-if (store.profile.samples !== false) {
-  SEED_CLUSTERS.forEach((d, i) => addCluster(Object.assign({}, d, SLOTS[i], { kind: 'room', founder: 'seed', demo: true })));
-  SEED_THOUGHTS.forEach(([c, text, stance, settled, re], i) => {
-    const id = 's' + i, age = 2 + rnd(id + 'a') * 48, parent = re != null ? byId.get('s' + re) : null;
-    addThought({ id, c, kind: 'room', text, stance, settled, re: parent ? parent.id : null, glow: Math.pow(rnd(id + 'g'), 2) * .9,
-      created: store.first - age * DAY, touched: store.first - Math.min(age, rnd(id + 't') * 9) * DAY,
-      oy: parent ? clamp(parent.oy + (rnd(id + 'o') - .5) * .8, -1, 1) : null });
+// the nebulae: the sample rooms (unless hidden), then rooms kept in this browser or account, then your thoughts in them.
+// shared rooms come from the cloud and are left in place. a reply whose parent is hidden just stands on its own (its re is kept).
+function buildRooms(boot) {
+  const here = !boot && space === 'nebulae', selId = here && sel ? sel.id : null, cId = here && selCluster ? selCluster.id : null;
+  const local = id => { const t = spaces.nebulae.byId.get(id), c = t && spaces.nebulae.clusters.get(t.c); return !!(c && !c.remote); };
+  if (!boot && refineOrig && local(refineOrig.id)) cancelRefine();
+  inSpace('nebulae', () => {
+    for (const c of [...clusters.values()]) if (!c.remote) dropCluster(c);
+    if (store.profile.samples !== false) {
+      for (const d of SAMPLES.rooms) addCluster(Object.assign({}, d, portrait ? { x: d.px, y: d.py } : null, { kind: 'room', founder: 'seed', demo: true }));
+      for (const d of SAMPLES.thoughts) {
+        const parent = d.re ? byId.get(d.re) : null;
+        const t = addThought({ id: d.id, c: d.c, kind: 'room', text: d.text, stance: d.stance, settled: d.settled, re: parent ? parent.id : null, alias: SAMPLES.cast.get(d.by) || d.by,
+          glow: Math.pow(rnd(d.id + 'g'), 2) * .9, created: store.first - d.ago * DAY, touched: store.first - Math.max(0, d.ago - rnd(d.id + 't') * 3) * DAY,
+          oy: parent ? clamp(parent.oy + (rnd(d.id + 'o') - .5) * .8, -1, 1) : null });
+        t.sample = true;
+      }
+      for (const c of [...clusters.values()]) if (c.remote && [...clusters.values()].some(o => !o.remote && Math.hypot(o.x - c.x, o.y - c.y) < 470)) Object.assign(c, freeSpot());   // a shared room sitting where a sample room returns moves aside
+    }
+    for (const d of store.rooms.clusters) { if (!d || !d.id || clusters.has(d.id)) continue; settleSaved(d); addCluster(Object.assign({}, d, { kind: 'room', founder: 'you' })); }
+    for (const d of store.rooms.thoughts) if (d && d.id && clusters.has(d.c) && !byId.has(d.id) && typeof d.text === 'string') addThought(Object.assign({}, d, { kind: 'room', mine: true }));
+    for (const c of clusters.values()) layout(c, boot || !c.remote);
   });
+  if (here && !sel && !selCluster) { const t = selId && spaces.nebulae.byId.get(selId), c = cId && spaces.nebulae.clusters.get(cId); if (t) selectThought(t, { fly: false }); else if (c) openCluster(c, { fly: false }); }   // what was open comes back, if it still exists
 }
-for (const d of store.rooms.clusters) { if (!d || !d.id || clusters.has(d.id)) continue; settleSaved(d); addCluster(Object.assign({}, d, { kind: 'room', founder: 'you' })); }
-for (const d of store.rooms.thoughts) if (d && d.id && clusters.has(d.c) && !byId.has(d.id) && typeof d.text === 'string') addThought(Object.assign({}, d, { kind: 'room', mine: true }));
-for (const t of thoughts) if (t.re && !byId.has(t.re)) t.re = null;
-for (const c of clusters.values()) layout(c, true);
+buildRooms(true);
 // and the galaxy
 function rebuildGalaxy() {   // (re)builds the galaxy from whichever store is active: this browser's, or the signed-in account's
   inSpace('galaxy', () => {
@@ -883,11 +940,25 @@ function rebuildGalaxy() {   // (re)builds the galaxy from whichever store is ac
     for (const d of store.galaxy.clusters) { if (!d || !d.id || clusters.has(d.id)) continue; settleSaved(d); addCluster(Object.assign({}, d, { kind: 'galaxy', founder: 'you' })); }
     for (const d of store.galaxy.thoughts) if (d && d.id && clusters.has(d.c) && !byId.has(d.id) && typeof d.text === 'string') addThought(Object.assign({}, d, { kind: 'own', mine: true }));
     for (const c of clusters.values()) layout(c, true);
+    syncGhosts();
+  });
+}
+// an empty galaxy offers three faint places to start. they're never saved, and go as soon as something is placed
+const GHOSTS = ['a question you keep circling', "something you're learning", "a choice you can't make yet"];
+const hasOwn = () => spaces.galaxy.thoughts.some(t => t.kind === 'own');
+const clearGhosts = () => inSpace('galaxy', () => { const c = clusters.get('g_start'); if (c) dropCluster(c); });
+function syncGhosts() {
+  if (hasOwn()) return clearGhosts();
+  inSpace('galaxy', () => {
+    if (clusters.has('g_start')) return;
+    const c = addCluster({ id: 'g_start', kind: 'galaxy', name: 'places to start', q: 'pick one, or write anything', x: 0, y: 0 }); c.ghost = true; c.terms = new Map();
+    GHOSTS.forEach((text, i) => addThought({ id: 'g_start_' + i, c: c.id, kind: 'result', src: 'ghost', text, settled: .5 }));
+    layout(c, true);
   });
 }
 setSpace('galaxy');
 rebuildGalaxy();
-const proposalsFor = c => (c.demo ? SEED_PROPOSALS : []).concat(store.rooms.proposals).filter(p => p.c === c.id);
+const proposalsFor = c => (c.demo ? SAMPLES.proposals : []).concat(store.rooms.proposals).filter(p => p.c === c.id);
 
 /* ---------- view state ---------- */
 let W = 0, H = 0, dpr = 1, wide = true;
@@ -902,8 +973,8 @@ function setMode(m) { mode = m; body.dataset.mode = m; if (m !== 'map') { hover 
 function syncNav() {
   body.dataset.space = space;
   for (const b of document.querySelectorAll('.scales button')) b.setAttribute('aria-pressed', String(b.dataset.space === space));
-  $('#menuBtn').textContent = wide ? { galaxy: 'constellations', nebulae: 'nebulae', sky: 'searches' }[space] : 'list';
-  syncPulls();
+  $('#menuBtn').textContent = wide ? { galaxy: 'constellations', nebulae: 'clusters', sky: 'searches' }[space] : 'list';
+  syncPulls(); syncDots();
 }
 
 function viewSize() {
@@ -970,25 +1041,62 @@ function say(content, hold = 3400) {
 }
 const hush = () => { clearTimeout(sayTimer); captionEl.classList.remove('on'); };
 
+/* ---------- what's new: a breathing star until you open it, a red dot on a space until you look ---------- */
+const NEWDAYS = 14 * DAY, S = () => store.view.seen;
+// a shared room someone else founded since this browser started noticing (its question becomes a place to start in the open sky)
+const newRoom = c => !!(c.remote && c.founder === 'other' && c.q && c.created > S().since && Date.now() - c.created < NEWDAYS && !S().open['r:' + c.id]);
+function isNew(t, now = Date.now()) {
+  const s = S();
+  if (t.kind === 'room') return !t.mine && !t.sample && t.created > s.since && now - t.created < NEWDAYS && !s.open[t.id];   // someone else's words
+  if (t.kind === 'own') return !!s.fresh[t.id];   // kept from the open sky, or added on another device
+  return t.src === 'suggest' && !!t.at && !s.open[t.key];   // a new room's question in the open sky (search results never count)
+}
+const arrival = t => (t.kind === 'own' ? S().fresh[t.id] : t.kind === 'result' ? t.at : t.created) || 0;
+function markFresh(t) { if (!t) return; S().fresh[t.id] = Date.now(); save(true); syncDots(); }
+function markSeen(t) {
+  if (!isNew(t)) return;
+  if (t.kind === 'own') delete S().fresh[t.id]; else S().open[t.kind === 'result' ? t.key : t.id] = Date.now();
+  save(true); syncDots();
+}
+const stamp = sp => { S().at[sp] = Date.now(); save(true); };
+const newestIn = sp => {
+  if (sp === 'sky') { let n = 0; for (const c of spaces.nebulae.clusters.values()) if (newRoom(c)) n = Math.max(n, c.created); return n; }
+  let n = 0; const now = Date.now(); for (const t of spaces[sp].thoughts) if (isNew(t, now)) n = Math.max(n, arrival(t)); return n;
+};
+let dotsQ = false;
+function syncDots() {   // queued, so it never runs while another space is borrowed (inSpace)
+  if (dotsQ) return; dotsQ = true;
+  queueMicrotask(() => {
+    dotsQ = false; const at = S().at;
+    for (const b of document.querySelectorAll('.scales button')) {
+      const sp = b.dataset.space, on = sp !== space && newestIn(sp) > (at[sp] || 0);
+      b.classList.toggle('new', on); b.setAttribute('aria-label', (sp === 'sky' ? 'open sky' : sp) + (on ? ', something new' : ''));
+    }
+  });
+}
+const newDot = () => el('span', { class: 'nd', title: 'new' });
+
 /* ---------- moving between the three scales ---------- */
 const greeted = {};
 function greet() {
-  if (space === 'galaxy' && !thoughts.length) return say("your galaxy is empty. start with a question you keep circling, or something you're learning.", 0);
+  if (space === 'galaxy' && !hasOwn()) return say('your galaxy is empty. pick a place to start, or press n and write anything.', 0);
+  if (space === 'nebulae' && !clusters.size) return say(store.profile.samples === false ? 'no nebulae here yet. found one from the list, or bring the samples back there.' : 'no nebulae here yet. found the first one from the list.', 0);
   if (space === 'sky' && !sky.q) { say("start from something you've searched or thought about, or type above.", 0); if (wide) setTimeout(() => { if (space === 'sky' && mode === 'map') $('#skyQ').focus({ preventScroll: true }); }, 600); return; }
   if (greeted[space]) return; greeted[space] = 1;
-  say({ galaxy: 'your own sky. nothing leaves it unless you send it.', nebulae: 'small rooms. glance at one, join it, or found your own.' + (store.profile.samples !== false ? ' rooms marked sample hold seeded voices.' : ''), sky: 'what your thought touched. select a star to open it.' }[space], 6000);
+  say({ galaxy: 'your own sky. nothing leaves it unless you send it.', nebulae: 'small rooms. glance at one, join it, or found your own.' + (store.profile.samples !== false ? ' the sample rooms hold seeded voices, and the list can hide them.' : ''), sky: 'what your thought touched. select a star to open it.' }[space], 6000);
 }
 async function goSpace(name) {
   if (mode === 'drift') return;
   const id = ++spaceToken; closeMenu(); linkFrom = null;
+  if (mode === 'map') stamp(space);
   if (mode !== 'map') {
-    landing.classList.add('leaving'); landing.inert = true; setMode('map'); setSpace(name); syncNav(); freshSky();
+    landing.classList.add('leaving'); landing.inert = true; setMode('map'); setSpace(name); stamp(name); syncNav(); freshSky();
     mapRate = 2.4; mapAT = 1; showAll(visited ? 1400 : 2800);
   } else {
     if (name === space) { showAll(); return; }
     closePanel(); hush(); mapRate = 9; mapAT = 0;
     await wait(360); if (id !== spaceToken) return;
-    setSpace(name); syncNav(); freshSky();
+    setSpace(name); stamp(name); syncNav(); freshSky();
     const f = fitAll(); flyToken++; cam.x = goal.x = f.x; cam.y = goal.y = f.y; cam.z = goal.z = f.z * .8;
     mapRate = 2.4; mapAT = 1; flyTo(f.x, f.y, f.z, 1500);
   }
@@ -1122,11 +1230,23 @@ function drawStars(ts) {
     const g = (t.glow + (!t.res && res[t.id] ? .45 : 0) + (own ? .16 : 0)) * (rep ? .35 : 1), r = ((own ? 1.3 : .9) + b * 1.8) * ss * rk, R = (4 + b * 7 + g * 26) * ss * rk;
     if (t.src === 'launch') {   // a doorway out, drawn hollow
       ctx.globalAlpha = .75 * ca; ctx.beginPath(); ctx.arc(sx, sy, 3.2 * ss, 0, TAU); ctx.stroke();
+    } else if (t.src === 'ghost') {   // a place to start: hollow, dashed, waiting
+      ctx.setLineDash([2, 3]); ctx.globalAlpha = .62 * tw * ca; ctx.beginPath(); ctx.arc(sx, sy, 5 * ss * rk, 0, TAU); ctx.stroke(); ctx.setLineDash([]);
+      ctx.globalAlpha = .5 * ca; ctx.beginPath(); ctx.arc(sx, sy, 1.1 * ss, 0, TAU); ctx.fill();
     } else {
+      const web = webFind(t), cr = web ? r * .78 : r, a = clamp(((own ? .46 : .24) + (own ? .54 : .76) * b) * tw * ca, 0, 1);
+      if (isNew(t, now)) {   // new since you last looked: a slow breathing halo until you open it (steady, with a ring, under reduced motion)
+        const ph = reduced ? .55 : .5 + .5 * Math.sin(t1 * 2.4 + t.twp), PR = (R + 10 * ss) * (1.1 + .5 * ph);
+        ctx.globalAlpha = clamp((.14 + .3 * ph) * ca, 0, 1); ctx.drawImage(glowSprite, sx - PR, sy - PR, PR * 2, PR * 2);
+        if (reduced) { ctx.globalAlpha = .45 * ca; ctx.beginPath(); ctx.arc(sx, sy, cr + 7, 0, TAU); ctx.stroke(); }
+      }
       ctx.globalAlpha = clamp((.1 + .16 * b + .34 * g) * tw * ca, 0, 1);
       ctx.drawImage(glowSprite, sx - R, sy - R, R * 2, R * 2);
-      ctx.globalAlpha = clamp(((own ? .46 : .24) + (own ? .54 : .76) * b) * tw * ca, 0, 1);
-      ctx.beginPath(); ctx.arc(sx, sy, r, 0, TAU); ctx.fill();
+      ctx.globalAlpha = a; ctx.beginPath(); ctx.arc(sx, sy, cr, 0, TAU); ctx.fill();
+      if (web) {   // something from the web: the same glow, plus a far-off star's four-point glint
+        const L = Math.max(cr * 3.4, 5.5 * ss * rk);
+        ctx.globalAlpha = a * .62; ctx.beginPath(); ctx.moveTo(sx - L, sy); ctx.lineTo(sx + L, sy); ctx.moveTo(sx, sy - L); ctx.lineTo(sx, sy + L); ctx.stroke();
+      }
     }
     if (t.mine && t.kind === 'room') { ctx.globalAlpha = .5 * ca; ctx.beginPath(); ctx.arc(sx, sy, r + 4.5, 0, TAU); ctx.stroke(); }
     const pk = (ts - t.pulse) / (1300 * MS);
@@ -1192,23 +1312,28 @@ function drawDrift(ts) {
   ctx.globalAlpha = 1;
 }
 
-const sample = t => t.kind === 'room' && /^s\d+$/.test(t.id);   // a seeded voice in a sample room
-const who = t => (t.mine ? 'you' : sample(t) ? 'a sample voice' : t.alias || 'someone');
+const webFind = t => !!t.url && t.src !== 'launch';   // a search result, or something kept or brought in from the open sky
+const sample = t => !!t.sample;   // one of the five seeded voices in a sample room (samples.js)
+const who = t => (t.mine ? 'you' : t.alias || (sample(t) ? 'a sample voice' : 'someone'));
 // a nebula thought's google photo: yours (unless your profile is hidden), or the one its author shared with it
 const faceOf = t => (t.kind === 'own' || t.mine ? (!store.profile.hidden && cloud.user && cloud.user.photo) || '' : t.kind === 'room' ? t.photo || '' : '');
-// a person's face beside their words: their google photo, or (no photo, or it won't load) the first letter of their name in a ring
-const mark = t => el('span', { class: 'avatar mono', 'aria-hidden': 'true' }, (who(t)[0] || '·'));
+// a person's face beside their words: their google photo, or (no photo, or it won't load) the first letter of their name in a ring.
+// a sample voice's ring is dotted, so it never passes for a real person
+const mark = t => el('span', { class: 'avatar mono' + (sample(t) ? ' seed' : ''), 'aria-hidden': 'true' }, (who(t)[0] || '·'));
 const face = t => {
-  if ((t.kind !== 'room' && t.kind !== 'own') || sample(t)) return null;
+  if (t.kind !== 'room' && t.kind !== 'own') return null;
+  if (sample(t)) return mark(t);
   const p = faceOf(t);
   return p ? el('img', { class: 'avatar', src: p, alt: '', referrerpolicy: 'no-referrer', onerror: e => e.target.replaceWith(mark(t)) }) : mark(t);
 };
 // under a star's words: who, then where (a search result says where it came from instead)
-const tipSmall = t => (t.kind === 'result' ? (t.src === 'launch' ? 'opens in a new tab' : t.src === 'suggest' ? 'search the open sky for this' : t.src)
-  : who(t) + ' · ' + cname(clusters.get(t.c)) + (sample(t) ? ' · sample' : ''));
+const tipSmall = t => (isNew(t) ? 'new · ' : '') + (t.kind === 'result' ? (t.src === 'ghost' ? 'a place to start · write it' : t.src === 'launch' ? 'opens in a new tab' : t.src === 'suggest' ? 'search the open sky for this' : t.src)
+  : (webFind(t) ? fromWeb(t) + ' · ' + (t.kind === 'own' ? 'kept by you' : 'brought by ' + who(t)) : who(t)) + ' · ' + cname(clusters.get(t.c)) + (sample(t) ? ' · sample' : ''));
+const fromWeb = t => 'from ' + (t.src || 'the web');
 let tipFor = null, frameN = 0, last = 0;
 function updateTip() {
-  const t = mode === 'map' && !drag ? (kb || hover) : null;
+  let t = mode === 'map' && !drag ? (kb || hover) : null;
+  if (t && byId.get(t.id) !== t) { t = null; if (hover && byId.get(hover.id) !== hover) hover = null; if (kb && byId.get(kb.id) !== kb) kb = null; }   // left behind in another space
   if (!t || t === sel) { if (tipFor) { tip.classList.remove('on'); tipFor = null; } return; }
   if (tipFor !== t) { tipFor = t; tip.replaceChildren(snip(t.text, 120), el('small', null, face(t), tipSmall(t))); tip.classList.add('on'); }
   const sx = X(t.x), sy = Y(t.y), w = tip.offsetWidth, h = tip.offsetHeight;
@@ -1367,7 +1492,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'n') { e.preventDefault(); openComposer(); }
   else if (e.key === 'p' && space !== 'sky') togglePulls();
   else if (e.key === 's') toggleSpread();
-  else if (e.key === '?') openAbout();
+  else if (e.key === '?') openHelp();
   else if (e.key === '0') showAll();
   else if (e.key === '1') goSpace('galaxy'); else if (e.key === '2') goSpace('nebulae'); else if (e.key === '3') goSpace('sky');
   else if (e.key === '+' || e.key === '=') zoomBy(1.4);
@@ -1442,12 +1567,12 @@ function careBlock(onEdit, onPlace) {
 }
 const thoughtItem = (t, extra) => el('li', null,
   el('button', { type: 'button', onclick: () => selectThought(t, { keepFocus: true }) }, snip(t.text, 150),
-    el('small', null, t.kind === 'result' ? t.src + (t.meta ? ' · ' + t.meta : '') : [face(t), who(t) + ' · ' + ago(t.created)])), extra);
+    el('small', null, isNew(t) ? newDot() : null, t.kind === 'result' ? t.src + (t.meta ? ' · ' + t.meta : '') : [face(t), (webFind(t) ? fromWeb(t) + ' · ' : '') + who(t) + ' · ' + ago(t.created)])), extra);
 
 function selectThought(t, o = {}) {
   if (linkFrom && linkFrom !== t && t.kind !== 'result' && byId.get(linkFrom.id) === linkFrom) return completeLink(t);
   if (refineOrig && refineOrig.id !== t.id) cancelRefine();
-  sel = t; selCluster = null; kb = null; hover = null;
+  sel = t; selCluster = null; kb = null; hover = null; markSeen(t);
   renderThought(t); openPanel();
   if (o.fly !== false) {
     const c = clusters.get(t.c), zc = fitCluster(c);
@@ -1464,7 +1589,7 @@ function openCluster(c, o = {}) {
   if (o.focus) panel.focus({ preventScroll: true });
 }
 const renderThought = (t, st = {}) => (t.kind === 'own' ? renderOwn : t.kind === 'result' ? renderResult : renderRoomThought)(t, st);
-const renderCluster = (c, st = {}) => (c.kind === 'galaxy' ? renderConstellation : c.kind === 'sky' ? renderSkyCluster : renderRoom)(c, st);
+const renderCluster = (c, st = {}) => (c.ghost ? renderStart : c.kind === 'galaxy' ? renderConstellation : c.kind === 'sky' ? renderSkyCluster : renderRoom)(c, st);
 
 /* refining: shared by your galaxy and by your thoughts in nebulae */
 let refineOrig = null;
@@ -1568,9 +1693,16 @@ function removeOwn(t) {
   const c = clusters.get(t.c), linked = linksOf(t);
   dropThought(t); store.galaxy.thoughts = store.galaxy.thoughts.filter(d => d.id !== t.id);
   for (const o of linked) persist(o);
-  layout(c); tidy(c); save(); say('removed.');
+  layout(c); tidy(c); save(); syncGhosts(); say('removed.');
 }
-const shareTo = (t, room) => Promise.resolve(goSpace('nebulae')).then(() => { if (space === 'nebulae' && mode === 'map') place(t.text, room); });
+// a web find in this space or room, by its link (so the same page isn't kept or brought twice)
+const findIn = (sp, url, c) => (url ? spaces[sp].thoughts.find(o => o.kind !== 'result' && o.url === url && (!c || o.c === c.id)) : null);
+const already = d => Promise.resolve(goSpace('nebulae')).then(() => { if (space === 'nebulae' && byId.get(d.id) === d) { selectThought(d); say("it's already there."); } });
+// a copy of one of your thoughts goes to a room; a kept web find keeps its link (never your private notes)
+const shareTo = (t, room) => { const d = findIn('nebulae', t.url, room); if (d) return already(d);
+  return Promise.resolve(goSpace('nebulae')).then(() => { if (space === 'nebulae' && mode === 'map') place(t.text, room, t.url ? { url: t.url, src: t.src } : null); }); };
+const bringTo = (t, room, stance) => { const d = findIn('nebulae', t.url, room); if (d) return already(d);
+  return Promise.resolve(goSpace('nebulae')).then(() => { if (space === 'nebulae' && mode === 'map') place(t.text, room, { url: t.url, src: t.src, note: t.snippet, stance }); }); };
 
 function renderOwn(t, st) {
   const c = clusters.get(t.c), n = [head(crumb(c), t)];
@@ -1627,7 +1759,10 @@ function renderRoomThought(t, st) {
   n.push(el('p', { class: 'meta' }, face(t), who(t) + ' · ' + ago(t.created) + (t.refines ? ' · refined' : '') + (t.mine ? ` · shown as “${t.alias || shownAs()}”` : '')));
   if (st.refine) { refineForm(t, c, n); return setPanel(n, 'refining a thought', true); }
   if (parent) n.push(el('p', { class: 'meta' }, 'a reply to ', btn('“' + snip(parent.text, 48) + '”', () => selectThought(parent, { keepFocus: true }), 'link')));
-  n.push(el('p', { class: parent ? 'thought small' : 'thought' }, t.text), settledLine(t));
+  n.push(el('p', { class: parent ? 'thought small' : 'thought' }, t.text));
+  if (webFind(t)) n.push(el('p', { class: 'note' }, 'brought from the open sky · ', el('a', { href: t.url, target: '_blank', rel: 'noopener noreferrer' }, t.src || 'source')));
+  if (webFind(t) && t.note) n.push(el('p', { class: 'notes' }, t.note));
+  n.push(settledLine(t));
   n.push(el('div', { class: 'sec' }, el('h3', null, 'where it sits'), spectrumView(c, t.stance), el('p', { class: 'where' }, stanceWords(t.stance, c))));
   // one main action (reply, or refine for your own), then the rest
   const main = el('div', { class: 'row' }), more = el('div', { class: 'row' });
@@ -1672,7 +1807,7 @@ function renderRoom(c, st) {
   const m = roomOrder(c), member = isMember(c);
   const n = [head(el('span', { class: 'meta' }, 'nebula · ' + (c.demo ? 'sample room' : c.remote ? 'shared room' : 'this browser only')))];
   n.push(el('h2', null, cname(c)), el('p', { class: 'question' }, c.q || 'no guiding question yet.'));
-  n.push(el('p', { class: 'meta' }, (c.founder === 'you' ? 'founded by you' : c.demo ? 'founded by someone else' : 'founded by ' + (c.ownerAlias || 'someone')) + ' · ' + (member ? "you're a member" : "you're glancing")));
+  n.push(el('p', { class: 'meta' }, (c.founder === 'you' ? 'founded by you' : c.demo ? 'seeded voices: ' + [...new Set(members(c).filter(sample).map(who))].join(', ') : 'founded by ' + (c.ownerAlias || 'someone')) + ' · ' + (member ? "you're a member" : "you're glancing")));
   n.push(el('div', { class: 'sec' }, el('h3', null, 'its spectrum'), spectrumView(c, null), el('p', { class: 'where' }, 'every thought starts in the grey middle. its author can move it.')));
   const acts = el('div', { class: 'row' }), more = el('div', { class: 'row' });
   if (member) acts.append(btn('add a thought here', () => openComposer(c), 'b solid'));
@@ -1711,8 +1846,9 @@ function renderRoom(c, st) {
 const inviteLink = c => location.href.split('#')[0] + '#room-' + c.remote;
 
 /* ---------- open sky ---------- */
-function renderResult(t) {
+function renderResult(t, st = {}) {
   const c = clusters.get(t.c), launch = t.src === 'launch', n = [head(crumb(c), t)];
+  if (t.src === 'ghost') return openComposer(null, { ask: t.text });   // a place to start in an empty galaxy: straight to writing
   if (t.src === 'suggest') {   // a starting point, not a page: its action is to search from it
     n.push(el('p', { class: 'meta' }, 'a place to start' + (t.meta ? ' · ' + t.meta : '')), el('p', { class: 'thought' }, t.text),
       el('div', { class: 'row' }, btn('search the open sky for this', () => runSky(t.text), 'b solid')),
@@ -1724,10 +1860,30 @@ function renderResult(t) {
   if (t.snippet) n.push(el('p', { class: 'notes' }, t.snippet));
   n.push(el('div', { class: 'row' }, el('a', { class: 'b solid', href: t.url, target: '_blank', rel: 'noopener noreferrer' }, 'open in a new tab')));
   if (!launch) n.push(el('div', { class: 'row' },
-    btn('keep in my galaxy', () => { keepOwn(t.text, { url: t.url, src: t.src, note: t.snippet }); t.pulse = performance.now(); say('kept in your galaxy.'); }),
-    btn('search from here', () => runSky(t.text))));
+    btn('keep in my galaxy', () => { if (findIn('galaxy', t.url)) return say("it's already in your galaxy."); markFresh(keepOwn(t.text, { url: t.url, src: t.src, note: t.snippet })); t.pulse = performance.now(); say('kept in your galaxy.'); }),
+    btn('bring to a nebula', () => renderResult(t, { bring: true })), btn('search from here', () => runSky(t.text))));
+  if (st.bring) {   // a copy goes into one of your rooms, with a link back; where it sits there is yours to say
+    const near = nearRoom(t.text + ' ' + t.snippet), rooms = inSpace('nebulae', () => [...clusters.values()].filter(isMember)).sort((a, b) => (b === near) - (a === near));
+    const room = st.room && rooms.find(r => r.id === st.room), sec = el('div', { class: 'sec' }, el('h3', null, 'bring it to a nebula'));
+    if (!rooms.length) sec.append(el('p', { class: 'note' }, "you haven't joined a nebula yet. glance at a few and join one first."), el('div', { class: 'row' }, btn('look at nebulae', () => goSpace('nebulae')), btn('cancel', () => renderResult(t), 'link')));
+    else if (!room) sec.append(el('ul', { class: 'list' }, rooms.map(r => el('li', null, el('button', { type: 'button', onclick: () => renderResult(t, { bring: true, room: r.id }) }, cname(r), el('small', null, r === near ? 'near this' : r.q || ''))))),
+      el('div', { class: 'row' }, btn('cancel', () => renderResult(t), 'link')));
+    else {
+      let read = () => 0;
+      sec.append(el('p', { class: 'meta' }, 'into ', el('b', null, cname(room))));
+      if (room.poles) {
+        const range = el('input', { type: 'range', id: 'bStance', min: '-100', max: '100', step: '1', value: '0' }), where = el('p', { class: 'where' }, stanceWords(0, room));
+        read = () => { const v = range.value / 100; return Math.abs(v) < .07 ? 0 : v; };
+        range.addEventListener('input', () => { where.textContent = stanceWords(read(), room); range.setAttribute('aria-valuetext', stanceWords(read(), room)); });
+        sec.append(el('div', { class: 'field' }, el('label', { for: 'bStance' }, 'where does it sit?'), range, el('div', { class: 'poles' }, el('span', null, room.poles[0]), el('span', null, room.poles[1])), where));
+      }
+      sec.append(el('div', { class: 'row' }, btn('bring it', () => bringTo(t, room, read()), 'b ghost'), btn('another nebula', () => renderResult(t, { bring: true })), btn('cancel', () => renderResult(t), 'link')),
+        el('p', { class: 'note' }, `a copy goes there, shown as “${shownAs()}”, with a link back to ${t.src}. it takes part in the pulls like any thought.`));
+    }
+    n.push(sec);
+  }
   n.push(el('p', { class: 'note' }, launch ? "this opens that site's own search for your thought." : 'the open sky only points outward. the page itself opens in its own tab.'));
-  setPanel(n, 'something from the open sky');
+  setPanel(n, 'something from the open sky', st.bring);
 }
 function renderSkyCluster(c) {
   const m = members(c), n = [head(el('span', { class: 'meta' }, 'in the open sky'))];
@@ -1742,7 +1898,13 @@ function autosize() { mind.style.height = 'auto'; mind.style.height = mind.scrol
 let exN = Math.floor(Math.random() * EXAMPLES.length);
 const nextExample = () => { mind.placeholder = 'try: ' + EXAMPLES[exN++ % EXAMPLES.length]; };
 // once you're in, new thoughts are written in the side panel; the full-screen card is only for arriving
-function openComposer(target) {
+function renderStart(c) {   // the empty galaxy's places to start
+  setPanel([head(el('span', { class: 'meta' }, 'your galaxy · empty for now')), el('h2', null, cname(c)), el('p', { class: 'question' }, c.q),
+    el('ul', { class: 'list' }, members(c).map(t => el('li', null, el('button', { type: 'button', onclick: () => openComposer(null, { ask: t.text }) }, t.text)))),
+    el('div', { class: 'row' }, btn('write anything', () => openComposer(), 'b solid')),
+    el('p', { class: 'note' }, 'what you write lands in your galaxy and gathers with the thoughts it shares words with. these three go once it does.')], 'places to start');
+}
+function openComposer(target, o = {}) {
   if (mode !== 'map') return;
   if (refineOrig) cancelRefine();
   closeMenu(); linkFrom = null; sel = null; selCluster = null; kb = null;
@@ -1771,7 +1933,7 @@ function openComposer(target) {
   }
   ta.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); go(false); } });
   setPanel([head(el('span', { class: 'meta' }, 'a new thought')), tabs,
-    el('div', { class: 'field' }, el('label', { for: 'cText', class: 'ask' }, "what's on your mind?"), ta), pickWrap, hint, note,
+    el('div', { class: 'field' }, el('label', { for: 'cText', class: 'ask' }, o.ask || "what's on your mind?"), ta), pickWrap, hint, note,
     el('div', { class: 'row' }, goB, btn('cancel', () => closePanel(true), 'link'))].filter(Boolean), 'a new thought');
   sync();
   openPanel(); setTimeout(() => ta.focus({ preventScroll: true }), 60);
@@ -1786,25 +1948,27 @@ function submitMind(cleared) {
   care.hidden = true; mind.value = ''; autosize(); mind.blur();
   place(text, composeTarget);
 }
-function placeHere(text, c, sp) {   // a small addition lands right where it belongs: a quick pop and a pulse, no journey
+function placeHere(text, c, sp, extra) {   // a small addition lands right where it belongs: a quick pop and a pulse, no journey (extra: a web find's url, src, note, stance)
   closePanel(); hush(); visited = true;
   const now = Date.now(), id = c.remote ? 'f_' + cloudNewId(c) : uid('u');
-  const t = addThought({ id, c: c.id, kind: sp === 'galaxy' ? 'own' : 'room', text, stance: 0, settled: .2, created: now, touched: now, mine: true, alias: shownAs(), oy: 0 });
+  const t = addThought(Object.assign({ id, c: c.id, kind: sp === 'galaxy' ? 'own' : 'room', text, stance: 0, settled: .2, created: now, touched: now, mine: true, alias: shownAs(), oy: 0 }, extra));
   if (c.remote) t.pending = true;
   t.oy = pickOy(c, xOf(t, c), null, t); layout(c); t.x = t.tx; t.y = t.ty; t.lift = 2.4; t.pulse = performance.now(); persist(t);
+  if (sp === 'galaxy') syncGhosts();
   selectThought(t); say(['placed in ', el('b', null, cname(c))], 3000);
 }
-async function place(text, target) {
+async function place(text, target, extra) {
   const sp = target && target.kind === 'room' ? 'nebulae' : 'galaxy';
-  if (target && space === sp && mode === 'map' && clusters.get(target.id) === target) return placeHere(text, target, sp);
+  if (target && space === sp && mode === 'map' && clusters.get(target.id) === target) return placeHere(text, target, sp, extra);
   if (space !== sp) setSpace(sp);
+  if (sp === 'galaxy') clearGhosts();
   syncNav(); closePanel(); setMode('drift'); visited = true; hush(); spaceToken++;
   landing.classList.add('leaving'); landing.inert = true;
   const tf = terms(text), { ranked, keywords } = rankClusters(tf, clusters.values());
   let c = target || (ranked[0] && ranked[0].ok ? ranked[0].c : null), fresh = false;
   if (!c) { fresh = true; c = newConstellation(tf); c.born = Infinity; }
   const now = Date.now(), id = c.remote ? 'f_' + cloudNewId(c) : uid('u');
-  const t = addThought({ id, c: c.id, kind: sp === 'galaxy' ? 'own' : 'room', text, stance: 0, settled: .2, created: now, touched: now, mine: true, alias: shownAs(), oy: 0 });
+  const t = addThought(Object.assign({ id, c: c.id, kind: sp === 'galaxy' ? 'own' : 'room', text, stance: 0, settled: .2, created: now, touched: now, mine: true, alias: shownAs(), oy: 0 }, extra));
   if (c.remote) t.pending = true;
   t.oy = pickOy(c, xOf(t, c), null, t); t.held = true; t.x = 0; t.y = 0; layout(c); persist(t);
   drift = { t, from: { x: 0, y: 0 }, to: { x: t.tx, y: t.ty }, spawn: 0, line: 0, fade: 1, k: 0 };
@@ -1830,10 +1994,10 @@ async function place(text, target) {
 mind.addEventListener('input', autosize);
 mind.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); submitMind(false); } });
 $('#compose').addEventListener('submit', e => { e.preventDefault(); submitMind(false); });
-const wander = () => (visited ? leaveCompose() : goSpace(spaces.galaxy.thoughts.length ? 'galaxy' : 'nebulae'));
+const wander = () => (visited ? leaveCompose() : goSpace(hasOwn() ? 'galaxy' : 'nebulae'));
 $('#wander').addEventListener('click', wander); $('#landingX').addEventListener('click', wander);
 for (const b of document.querySelectorAll('#spaces [data-go]')) b.addEventListener('click', () => goSpace(b.dataset.go));
-$('#newHere').addEventListener('click', () => openAbout());
+$('#newHere').addEventListener('click', () => openTour(0));
 $('#targetClear').addEventListener('click', () => { composeTarget = null; $('#target').hidden = true; mind.focus(); });
 $('#newBtn').addEventListener('click', () => openComposer());
 $('#zoomIn').addEventListener('click', () => zoomBy(1.5));
@@ -1874,13 +2038,19 @@ function buildMenu(focusIndex) {
     SKY_SOURCES.concat([{ id: 'launch', name: 'doorways to other sites' }]).forEach((s, i) => items.push(el('button', { type: 'button', 'aria-pressed': String(store.sky.sources[s.id] !== false),
       onclick: e => { store.sky.sources[s.id] = store.sky.sources[s.id] === false; save(); const k = [...menu.querySelectorAll('button')].indexOf(e.currentTarget); buildMenu(k); } }, s.name)));
   } else {
-    const list = [...clusters.values()];
-    if (!list.length) items.push(el('p', { class: 'm-note' }, space === 'galaxy' ? 'no constellations yet.' : 'no nebulae here.'));
-    for (const c of list) items.push(pick(cname(c), () => { closeMenu(); openCluster(c, { focus: true }); }, c.name ? null : 'unnamed', c.kind === 'room' ? (c.demo ? 'sample' : c.remote ? 'shared' : 'yours') : null));
+    const list = [...clusters.values()].filter(c => !c.ghost).sort((a, b) => a.demo - b.demo);   // your rooms and shared ones first, the samples after
+    if (!list.length) items.push(el('p', { class: 'm-note' }, space === 'galaxy' ? 'no constellations yet.' : store.profile.samples === false ? 'no nebulae here yet. found one, or bring the samples back.' : 'no nebulae here.'));
+    for (const c of list) items.push(pick([cname(c), members(c).some(t => isNew(t)) ? newDot() : null], () => { closeMenu(); openCluster(c, { focus: true }); }, c.name ? null : 'unnamed', c.kind === 'room' ? (c.demo ? 'sample' : c.remote ? 'shared' : 'yours') : null));
     items.push(el('hr'), pick(space === 'galaxy' ? '+ new constellation' : '+ found a nebula', () => { closeMenu(); openFound(null, space === 'galaxy' ? 'galaxy' : 'room'); }));
+    if (space === 'nebulae' && SAMPLES.rooms.length) items.push(el('button', { type: 'button', id: 'mSamples', class: 'switch', 'aria-pressed': String(store.profile.samples !== false), title: 'show or hide the sample rooms. your part in them is kept.',
+      onclick: () => { setSamples(store.profile.samples === false); buildMenu(); $('#mSamples').focus(); } }, 'sample nebulae'));
   }
   menu.replaceChildren(...items);
   const b = menu.querySelectorAll('button'); if (b.length) b[Math.min(focusIndex || 0, b.length - 1)].focus();
+}
+function setSamples(on) {   // hide or bring back the sample rooms at once; your replies, joins and votes in them are kept either way
+  store.profile.samples = on; save(); buildRooms();
+  if (space === 'nebulae' && mode === 'map') { showAll(); say(on ? 'the sample nebulae are back.' : 'sample nebulae hidden. your replies in them are kept.', 4000); }
 }
 $('#menuBtn').addEventListener('click', () => {
   if (!menu.hidden) return closeMenu();
@@ -1894,25 +2064,152 @@ menu.addEventListener('keydown', e => {
 });
 
 /* ---------- dialogs ---------- */
-const about = $('#about'), found = $('#found'), you = $('#you');
-function openAbout() { if (about.open) return; about.showModal(); about.scrollTop = 0; $('#aboutTitle').focus({ preventScroll: true }); }   // start at the top, not at the close button
-$('#aboutBtn').addEventListener('click', openAbout);
-$('#mark').addEventListener('click', openAbout);
-$('#aboutClose').addEventListener('click', () => about.close());
-for (const d of [about, found, you]) d.addEventListener('click', e => { if (e.target === d) d.close(); });
-let wipeArmed = false;
-$('#wipe').addEventListener('click', async e => {
-  if (!wipeArmed) { wipeArmed = true; e.target.textContent = acct.uid ? 'erase everything i wrote, here and in my account' : 'erase everything i wrote here'; return; }
+const help = $('#help'), tour = $('#tour'), found = $('#found'), you = $('#you');
+for (const d of [help, tour, found, you]) d.addEventListener('click', e => { if (e.target === d) d.close(); });
+
+// the logo: hovering (or tabbing to) it shows a small about card; clicking it refreshes the page, as on most sites
+const brand = $('.brand'), mark0 = $('#mark'); let cardT = 0, reloadAsk = -1e9;
+const closeCard = () => { clearTimeout(cardT); brand.classList.remove('show'); };
+const cardSoon = on => { clearTimeout(cardT); cardT = setTimeout(() => brand.classList.toggle('show', on), on ? 250 : 220); };
+brand.addEventListener('pointerenter', e => { if (e.pointerType === 'mouse') cardSoon(true); });
+brand.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') cardSoon(false); });
+brand.addEventListener('focusin', e => {
+  if (brand.dataset.hush) { delete brand.dataset.hush; return; }
+  if (e.target !== mark0 || mark0.matches(':focus-visible')) { clearTimeout(cardT); brand.classList.add('show'); }
+});
+brand.addEventListener('focusout', e => { if (!brand.contains(e.relatedTarget)) cardSoon(false); });
+brand.addEventListener('keydown', e => { if (e.key === 'Escape' && brand.classList.contains('show')) { e.stopPropagation(); closeCard(); brand.dataset.hush = 1; mark0.focus(); } });
+mark0.addEventListener('click', () => {
+  const unsaved = !!mind.value.trim() || (panelOpen && [...panel.querySelectorAll('textarea')].some(t => t.value.trim()));
+  if (unsaved && performance.now() - reloadAsk > 5000) { reloadAsk = performance.now(); return say('you have unsaved words. click again to refresh.', 5000); }
+  location.assign(location.pathname + location.search);   // drops an invite link's #room-… so it isn't opened again
+});
+$('#acHelp').addEventListener('click', () => openHelp('start'));
+$('#acTour').addEventListener('click', () => openTour(0));
+
+// help: four sections, one at a time (it remembers the last one for this visit)
+let helpAt = 'start';
+function helpShow(h) {
+  helpAt = h;
+  for (const b of help.querySelectorAll('.hsecs button')) b.setAttribute('aria-pressed', String(b.dataset.h === h));
+  for (const s of help.querySelectorAll('.hsec')) s.hidden = s.dataset.h !== h;
+}
+function openHelp(h) {
+  closeCard(); if (tour.open) tour.close();
+  helpShow(h || helpAt); if (!help.open) help.showModal(); help.scrollTop = 0; $('#helpTitle').focus({ preventScroll: true });
+}
+help.querySelector('.hsecs').addEventListener('click', e => { const b = e.target.closest('button[data-h]'); if (b) helpShow(b.dataset.h); });
+help.querySelector('.hsecs').addEventListener('keydown', e => {   // left and right move between the sections
+  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return; e.preventDefault();
+  const b = [...help.querySelectorAll('.hsecs button')].filter(x => x.offsetParent !== null), i = b.indexOf(document.activeElement), n = b[(i + (e.key === 'ArrowRight' ? 1 : b.length - 1)) % b.length];
+  n.focus(); helpShow(n.dataset.h);
+});
+$('#helpBtn').addEventListener('click', () => openHelp());
+$('#helpClose').addEventListener('click', () => help.close());
+$('#helpTour').addEventListener('click', () => openTour(0));
+$('#helpClear').addEventListener('click', () => { help.close(); openYou(true); });
+
+// the tour: six short steps, from "new here?", help or the about card
+const TOUR = [
+  ['a space for unfinished thoughts', ["a place to think out loud, slowly. a thought doesn't have to be finished to belong here: it can change, brighten, or wait.",
+    'there are three scales: your galaxy, the nebulae and the open sky. nothing here is counted: no likes, no followers, no tallies.']],
+  ['your galaxy', ['what you write lands here first, and gathers into constellations with the thoughts it shares words with. each thought says which words gathered it.',
+    'refine a thought and it asks you something back, like “what would change your mind?”. your answer stays in its notes, only for you. refined thoughts brighten; ones left alone slowly dim.',
+    'you can connect any two stars, and drag them where you like.']],
+  ['nebulae', ['small rooms around one question, with its two ends named. glance at any room; join one to add a thought, reply or resonate.',
+    'where a thought sits between the two ends is up to the person who wrote it. turn on pulls and each thought slides toward the end it leans to.',
+    'the sample rooms are written by five seeded voices. the nebulae list can hide them.'], [['avatar mono seed', 'a sample voice']]],
+  ['the open sky', ['send a thought outward. wikipedia, papers, books, hacker news and the archive answer, gathered by theme.',
+    'anything from the web wears a small four-point glint, wherever it goes. keep a find in your galaxy, or bring it into a room and say where it sits.'], [['sw web', 'from the web'], ['sw door', "a doorway to another site's own search"]]],
+  ['how a thought travels', ['a thought can start in your galaxy, go out to the open sky, come back with something you found, and land in a room as a copy, where other people answer it.',
+    'the original always stays with you.']],
+  ["what's new, and you", ['a star that slowly breathes is new since you last looked. a red dot on galaxy, nebulae or open sky means something arrived there.',
+    'sign in with google, under you, to keep your galaxy on every device and to share nebulae. help, or ?, has the controls and keys.'], [['sw new', 'new, until you open it'], ['nd', 'something new in that space']]],
+];
+let tourAt = 0;
+function tourShow(i) {
+  tourAt = clamp(i, 0, TOUR.length - 1); const [title, paras, legend] = TOUR[tourAt], last = tourAt === TOUR.length - 1;
+  $('#tourDots').replaceChildren(...TOUR.map((_, k) => el('i', { class: k === tourAt ? 'on' : null })));
+  $('#tourTitle').textContent = title;
+  $('#tourBody').replaceChildren(...paras.map(p => el('p', null, p)),
+    legend ? el('div', { class: 'legend' }, legend.flatMap(([c, w]) => [el(c.startsWith('avatar') ? 'span' : 'i', { class: c, 'aria-hidden': 'true' }, c.startsWith('avatar') ? 'm' : null), el('span', null, w)])) : '');
+  $('#tourPrev').disabled = !tourAt; $('#tourNext').textContent = last ? 'start writing' : 'next';
+  $('#tourNext').classList.toggle('solid', true);
+}
+function openTour(i) { closeCard(); if (help.open) help.close(); tourShow(i || 0); if (!tour.open) tour.showModal(); $('#tourTitle').focus({ preventScroll: true }); }
+const tourStep = d => { if (tourAt + d < 0 || tourAt + d >= TOUR.length) return; tourShow(tourAt + d); $('#tourTitle').focus({ preventScroll: true }); };
+$('#tourPrev').addEventListener('click', () => tourStep(-1));
+$('#tourNext').addEventListener('click', () => {
+  if (tourAt < TOUR.length - 1) return tourStep(1);
+  tour.close();   // the last step: start writing
+  if (mode === 'landing') mind.focus(); else if (mode === 'map') openComposer();
+});
+$('#tourClose').addEventListener('click', () => tour.close());
+tour.addEventListener('keydown', e => { if (e.key === 'ArrowRight') { e.preventDefault(); tourStep(1); } else if (e.key === 'ArrowLeft') { e.preventDefault(); tourStep(-1); } });
+
+// clearing your traces: some of them, or all
+const CLEAR = [
+  ['galaxy', 'your galaxy', 'thoughts, their notes and connections. all of it, or only the constellations you pick.'],
+  ['searches', 'searches', "recent and saved searches. the open sky's places to start come from these."],
+  ['rooms', 'your part in the rooms', 'replies, joins, resonates, votes and private connections in the sample rooms, and any rooms you founded in this browser.'],
+  ['layout', 'layout and new marks', "where you've moved stars, and what's marked new. this browser only."],
+  ['all', 'everything', 'all of the above and your name, here and in your account, as if you had never come. the page starts over.'],
+];
+let clr = null, wipeArmed = false;
+function disarm() { wipeArmed = false; $('#wipe').textContent = "clear what's ticked"; $('#clearNote').textContent = ''; }
+function renderClear(focusId) {
+  clr = clr || { picks: new Set() };
+  const cons = [...spaces.galaxy.clusters.values()].filter(c => !c.ghost);
+  const redo = id => { disarm(); renderClear(id); };
+  const box = ([k, label, note]) => {
+    const on = clr.all ? true : !!clr[k], off = clr.all && k !== 'all';
+    const row = [el('label', null, el('input', { type: 'checkbox', id: 'clr_' + k, checked: on, disabled: off, onchange: e => { clr[k] = e.target.checked; redo('clr_' + k); } }), el('span', null, label), el('small', null, note))];
+    if (k === 'galaxy' && clr.galaxy && !clr.all && cons.length) row.push(el('div', { class: 'sub' },
+      el('div', { class: 'row', role: 'group', 'aria-label': 'how much of your galaxy' },
+        el('button', { class: 'b', type: 'button', id: 'clr_whole', 'aria-pressed': String(!clr.only), onclick: () => { clr.only = false; redo('clr_whole'); } }, 'all of it'),
+        el('button', { class: 'b', type: 'button', id: 'clr_some', 'aria-pressed': String(!!clr.only), onclick: () => { clr.only = true; redo('clr_some'); } }, 'only some')),
+      clr.only ? cons.map(c => el('label', null, el('input', { type: 'checkbox', checked: clr.picks.has(c.id), onchange: e => { if (e.target.checked) clr.picks.add(c.id); else clr.picks.delete(c.id); disarm(); } }), el('span', { class: c.name ? null : 'unnamed' }, cname(c)))) : null));
+    return row;
+  };
+  $('#clearOpts').replaceChildren(...(acct.uid ? [el('p', { class: 'note' }, 'signed in, what you clear here is cleared from your account too.')] : []), ...CLEAR.flatMap(box));
+  const f = focusId && document.getElementById(focusId); if (f) f.focus();
+}
+function clearSome(o) {
+  if (o.galaxy) {
+    const only = o.only ? o.picks : null;
+    store.galaxy.clusters = only ? store.galaxy.clusters.filter(d => d && !only.has(d.id)) : [];
+    store.galaxy.thoughts = only ? store.galaxy.thoughts.filter(d => d && !only.has(d.c)) : [];
+    const keep = new Set(store.galaxy.thoughts.map(d => d.id));
+    for (const d of store.galaxy.thoughts) if (Array.isArray(d.links)) d.links = d.links.filter(id => keep.has(id));
+    for (const id of Object.keys(S().fresh)) if (!keep.has(id)) delete S().fresh[id];
+    rebuildGalaxy();
+  }
+  if (o.searches) { store.sky.recent = []; store.sky.saved = []; if (!sky.q) buildSky(); }
+  if (o.rooms) { Object.assign(store.rooms, { clusters: [], thoughts: [], joined: {}, resonated: {}, votes: {}, proposals: [], links: {} }); for (const t of spaces.nebulae.thoughts) t.links = []; buildRooms(); }
+  if (o.layout) { store.view.pos = {}; store.view.seen = { since: Date.now(), at: {}, open: {}, fresh: {} }; relayoutAll(); }
+  save(); syncPulls(); syncDots(); refreshPanel();
+}
+async function wipeAll(b) {   // everything: this browser's copy and the account's, then a fresh start
   const id = acct.uid;
   if (id) {   // the account copy would otherwise come straight back
     clearTimeout(acct.timer); acct.dirty = false; acct.loaded = false; if (acct.unsub) { acct.unsub(); acct.unsub = null; }
     try { await cloud.F.deleteDoc(cloud.F.doc(cloud.db, 'users', id)); }
-    catch (err) { wipeArmed = false; e.target.textContent = 'clear my traces'; return cloudFail('erase your account copy', err); }
+    catch (err) { disarm(); return cloudFail('erase your account copy', err); }
   }
   try { localStorage.removeItem(KEY); localStorage.removeItem('grayzone.v1'); if (id) localStorage.removeItem(UKEY(id)); } catch (_) {}
   storageOK = false; acct.uid = null; location.reload();
+}
+$('#wipe').addEventListener('click', e => {
+  const o = clr || {}, note = $('#clearNote');
+  if (!(o.all || o.galaxy || o.searches || o.rooms || o.layout)) { note.textContent = 'tick what you want to clear first.'; return; }
+  if (!o.all && o.galaxy && o.only && !o.picks.size) { note.textContent = 'pick the constellations to clear, or choose all of it.'; return; }
+  if (!wipeArmed) {
+    wipeArmed = true; e.target.textContent = o.all ? (acct.uid ? 'erase everything, here and in my account' : 'erase everything here') : 'clear it, for good';
+    note.textContent = "this can't be undone."; return;
+  }
+  if (o.all) return wipeAll(e.target);
+  clearSome(o); clr = null; disarm(); renderClear(); $('#clearNote').textContent = 'cleared.';
 });
-about.addEventListener('close', () => { wipeArmed = false; $('#wipe').textContent = 'clear my traces'; });
 
 function syncYouBtn() {   // the header says at a glance whether you're signed in
   const b = $('#youBtn'), u = cloud.user;
@@ -1925,20 +2222,24 @@ function renderYou() {
   $('#alias').value = store.profile.alias || '';
   $('#hideBtn').setAttribute('aria-pressed', String(!!store.profile.hidden));
   $('#hideNote').textContent = store.profile.hidden ? 'hidden. in nebulae you appear as “someone”.' : `in nebulae you appear as “${shownAs()}”.`;
-  $('#samplesBtn').setAttribute('aria-pressed', String(store.profile.samples !== false));
   const k = [el('h3', null, 'sharing')];
   if (!cloud.on) k.push(el('p', { class: 'note' }, "this copy isn't connected to a shared space, so nebulae you found live in this browser only. the readme explains how to connect it for free and sign in with google."));
   else if (!cloud.ready) k.push(el('p', { class: 'note' }, cloud.err ? "couldn't reach the sign-in service. check the connection and the firebase settings." : 'connecting.'));
-  else if (cloud.user) k.push(el('p', { class: 'note' }, `signed in with google as ${cloud.user.full || 'you'}. your galaxy, name and saved searches are kept in your account, so they follow you to any device you sign in on. nebulae you found are shared with everyone signed in to this copy.`), el('div', { class: 'row' }, btn('sign out', cloudSignOut)));
+  else if (cloud.user) k.push(el('p', { class: 'note' }, `signed in with google as ${cloud.user.full || 'you'}. your galaxy, name, saved searches and your part in the sample rooms are kept in your account, so they follow you to any device you sign in on. nebulae you found are shared with everyone signed in to this copy.`), el('div', { class: 'row' }, btn('sign out', cloudSignOut)));
   else k.push(el('p', { class: 'note' }, 'sign in to keep your galaxy on every device, see shared nebulae and found your own. what you write while signed out stays in this browser and is not added to your account.'), el('div', { class: 'row' }, btn('sign in with google', cloudSignIn, 'b solid')));
   $('#acct').replaceChildren(...k);
 }
-$('#youBtn').addEventListener('click', () => { renderYou(); if (!you.open) you.showModal(); const s = !cloud.user && $('#acct .solid'); if (s) s.focus(); });
+function openYou(toClear) {
+  if (!you.open) { clr = null; disarm(); }   // every visit starts with nothing ticked
+  renderYou(); renderClear(); if (!you.open) you.showModal();
+  if (toClear) { $('#clearSec').scrollIntoView({ block: 'start' }); $('#clr_galaxy').focus({ preventScroll: true }); return; }
+  const s = !cloud.user && $('#acct .solid'); if (s) s.focus();
+}
+$('#youBtn').addEventListener('click', () => openYou(false));
 $('#youClose').addEventListener('click', () => you.close());
 $('#alias').addEventListener('input', e => { store.profile.alias = e.target.value.trim().toLowerCase().slice(0, 24); save(); $('#hideNote').textContent = store.profile.hidden ? 'hidden. in nebulae you appear as “someone”.' : `in nebulae you appear as “${shownAs()}”.`; });
 $('#hideBtn').addEventListener('click', () => { store.profile.hidden = !store.profile.hidden; save(); renderYou(); });
-$('#samplesBtn').addEventListener('click', () => { store.profile.samples = store.profile.samples === false; if (acct.guest) acct.guest.profile.samples = store.profile.samples; save(); if (storageOK) location.reload(); else renderYou(); });
-you.addEventListener('close', () => refreshPanel());
+you.addEventListener('close', () => { clr = null; disarm(); refreshPanel(); });
 
 let foundFor = null, foundKind = 'room';
 function openFound(c, kind) {
@@ -2025,7 +2326,7 @@ const LAUNCHERS = [
 ];
 const srcName = id => { const s = SKY_SOURCES.find(s => s.id === id); return s ? s.name : id; };
 
-const TOPICAL = new Set(); for (const d of SEED_CLUSTERS) for (const [st] of terms(d.terms)) TOPICAL.add(st);
+const TOPICAL = new Set(); for (const d of SAMPLES.rooms) for (const [st] of terms(d.terms)) TOPICAL.add(st);
 function skyQueries(text) {   // from the whole thought down to its heaviest words
   const tf = terms(text), kw = [...tf.entries()].sort((a, b) => b[1].n - a[1].n || TOPICAL.has(b[0]) - TOPICAL.has(a[0]) || b[1].raw.length - a[1].raw.length).map(e => e[1].raw);
   const words = text.trim().split(/\s+/), out = [];
@@ -2073,10 +2374,10 @@ function suggestGroups() {   // before any search, the open sky offers places to
   const g = [], tip = (title, meta) => ({ title: String(title).slice(0, 160), meta: meta || '', src: 'suggest' });
   const recent = store.sky.recent.filter(s => typeof s === 'string' && s.trim()).slice(0, 8);
   if (recent.length) g.push({ name: 'recent searches', q: 'where you looked lately', items: recent.map(s => tip(s)) });
-  const own = [...spaces.galaxy.thoughts].sort((a, b) => b.touched - a.touched).slice(0, 6);
+  const own = spaces.galaxy.thoughts.filter(t => t.kind === 'own').sort((a, b) => b.touched - a.touched).slice(0, 6);
   if (own.length) g.push({ name: 'from your galaxy', q: 'your own thoughts, sent outward', items: own.map(t => tip(t.text)) });
-  const rooms = [...spaces.nebulae.clusters.values()].filter(c => c.q).sort((a, b) => isMember(b) - isMember(a)).slice(0, 6);
-  if (rooms.length) g.push({ name: 'nebula questions', q: 'what the rooms keep circling', items: rooms.map(c => tip(c.q, cname(c))) });
+  const rooms = [...spaces.nebulae.clusters.values()].filter(c => c.q).sort((a, b) => newRoom(b) - newRoom(a) || isMember(b) - isMember(a)).slice(0, 6);
+  if (rooms.length) g.push({ name: 'nebula questions', q: 'what the rooms keep circling', items: rooms.map(c => Object.assign(tip(c.q, cname(c)), { key: 'r:' + c.id, at: newRoom(c) ? c.created : 0 })) });
   if (!g.length) g.push({ name: 'places to start', items: EXAMPLES.slice(0, 6).map(e => tip(e)) });
   return g;
 }
@@ -2095,8 +2396,8 @@ function buildSky() {
     groups.forEach((g, i) => {
       const c = addCluster(Object.assign({ id: 'k' + i, kind: 'sky', name: g.name, q: g.q || '' }, SLOTS[i % SLOTS.length]));
       c.born = now + i * 240;
-      g.items.slice(0, 12).forEach((r, j) => addThought({ id: 'k' + i + '_' + j, c: c.id, kind: 'result', text: r.title, snippet: r.snippet, meta: r.meta, url: r.url,
-        src: r.src === 'launch' || r.src === 'suggest' ? r.src : srcName(r.src), settled: clamp(.92 - (r.rank || 0) * .08, .3, .92) }));
+      g.items.slice(0, 12).forEach((r, j) => { const t = addThought({ id: 'k' + i + '_' + j, c: c.id, kind: 'result', text: r.title, snippet: r.snippet, meta: r.meta, url: r.url,
+        src: r.src === 'launch' || r.src === 'suggest' ? r.src : srcName(r.src), settled: clamp(.92 - (r.rank || 0) * .08, .3, .92) }); if (r.key) { t.key = r.key; t.at = r.at || 0; } });
       layout(c, true);
     });
   });
@@ -2153,7 +2454,7 @@ async function cloudInit() {
   const cfg = window.GRAY_ZONE_FIREBASE;
   { const m = /^#room-([\w-]{4,40})$/.exec(location.hash || ''); if (m) cloud.invite = m[1]; }
   if (!cfg || !cfg.apiKey || !cfg.projectId) { if (cloud.invite) say("this copy isn't connected, so invite links don't open here.", 7000); return; }
-  cloud.on = true; $('#protoNote').textContent = 'this is a prototype. the sample nebulae are seeded voices. signed in, your galaxy is kept in your google account on this copy’s firebase project, and shared nebulae are kept there too. signed out, what you write stays in this browser.';
+  cloud.on = true; $('#protoNote').textContent = 'this is a prototype. signed in, your galaxy, saved searches and your part in the sample rooms are kept in your google account on this copy’s firebase project, and shared nebulae are kept there too. signed out, what you write stays in this browser.';
   try {
     const [A, U, F] = await Promise.all([import(FB + 'firebase-app.js'), import(FB + 'firebase-auth.js'), import(FB + 'firebase-firestore.js')]);
     const app = A.initializeApp(cfg);
@@ -2184,13 +2485,16 @@ async function cloudSignOut() { try { await acctPush(); await cloud.U.signOut(cl
 /* ───────── your galaxy, kept per google account: firestore users/{uid} ───────── */
 function accountShape(d) {   // what an account holds, filled out with defaults
   const b = blank(); d = d && typeof d === 'object' ? d : {};
-  return fixStore({ profile: Object.assign(b.profile, d.profile), galaxy: Object.assign(b.galaxy, d.galaxy), rooms: {}, sky: Object.assign(b.sky, d.sky) });
+  return fixStore({ profile: Object.assign(b.profile, d.profile), galaxy: Object.assign(b.galaxy, d.galaxy), rooms: Object.assign(b.rooms, d.rooms), sky: Object.assign(b.sky, d.sky) });
 }
-function swapStore(s) {   // puts another galaxy, profile and saved searches in place, keeping what's open if it still exists
+// an account saved before its sample-room progress moved into it starts from what this browser had (that's what it was showing)
+const withRooms = d => (d && typeof d === 'object' && !d.rooms ? Object.assign({}, d, { rooms: JSON.parse(JSON.stringify((acct.guest && acct.guest.rooms) || {})), adopted: true }) : d);
+function swapStore(s) {   // puts another galaxy, profile, saved searches and nebulae state in place, keeping what's open if it still exists
   const inG = space === 'galaxy', selId = inG && sel ? sel.id : null, cId = inG && selCluster ? selCluster.id : null;
-  s.profile.samples = store.profile.samples;   // the sample rooms are a setting of this browser
-  store.profile = s.profile; store.galaxy = s.galaxy; store.sky = s.sky;
+  const roomsChanged = JSON.stringify(store.rooms) !== JSON.stringify(s.rooms) || store.profile.samples !== s.profile.samples;
+  store.profile = s.profile; store.galaxy = s.galaxy; store.sky = s.sky; store.rooms = s.rooms;
   rebuildGalaxy();
+  if (roomsChanged) buildRooms();
   if (inG && space === 'galaxy') { const t = selId && byId.get(selId), c = cId && clusters.get(cId); if (t) selectThought(t, { fly: false }); else if (c) openCluster(c, { fly: false }); }
   if (you.open) renderYou();
   refreshPanel();
@@ -2199,15 +2503,16 @@ function acctStart(id) {
   acct.uid = id; acct.guest = synced(store); acct.loaded = false; acct.dirty = false;
   let cached = null;
   try { cached = JSON.parse(localStorage.getItem(UKEY(id)) || 'null'); } catch (_) {}
-  swapStore(accountShape(cached));   // the copy from the last visit shows at once; the account's copy replaces it when it arrives
+  swapStore(accountShape(withRooms(cached)));   // the copy from the last visit shows at once; the account's copy replaces it when it arrives
   const F = cloud.F;
   acct.unsub = F.onSnapshot(F.doc(cloud.db, 'users', id), snap => {
     if (acct.uid !== id) return;
     const d = snap.exists() ? snap.data() : null;
     if (!acct.loaded) {   // first answer: the account's copy wins over anything cached here
       acct.loaded = true; acct.dirty = false; clearTimeout(acct.timer);
-      acctApply(d, true);
-      if (!d) { acct.dirty = true; acctPush(); }   // a new account starts with an empty galaxy of its own
+      const r = withRooms(d);
+      acctApply(r, true);
+      if (!d || (r && r.adopted)) { acct.dirty = true; acctPush(); }   // a new account starts with an empty galaxy of its own; an older one keeps its sample-room progress
       return;
     }
     if (!d || snap.metadata.hasPendingWrites || acct.dirty || d.by === acct.tab) return;   // our own echo, or we have newer edits
@@ -2216,10 +2521,12 @@ function acctStart(id) {
 }
 function acctApply(d, now) {
   clearTimeout(acct.wait);
-  if (!now && (mode === 'drift' || refineOrig || (space === 'galaxy' && panelOpen && panel.querySelector('textarea, input[type="text"], select')))) {   // don't pull the page out from under someone mid-edit
+  if (!now && (mode === 'drift' || refineOrig || (space !== 'sky' && panelOpen && panel.querySelector('textarea, input[type="text"], select, input[type="range"]')))) {   // don't pull the page out from under someone mid-edit
     acct.wait = setTimeout(() => { if (acct.uid && !acct.dirty) acctApply(d); }, 2000); return;
   }
+  const before = now ? null : new Set(store.galaxy.thoughts.map(x => x && x.id));
   swapStore(accountShape(d));
+  if (before) { for (const x of store.galaxy.thoughts) if (x && !before.has(x.id)) S().fresh[x.id] = Date.now(); save(true); syncDots(); }   // added on another device
   try { localStorage.setItem(UKEY(acct.uid), JSON.stringify(synced())); } catch (_) {}
 }
 function acctPush() {
@@ -2275,7 +2582,8 @@ function cloudRoom(rid, d) {   // runs inside the nebulae space
         snap.forEach(doc => {
           const v = doc.data() || {}, tid = 'f_' + doc.id, res = Array.isArray(v.res) ? v.res : []; seen.add(tid);
           let t = byId.get(tid);
-          if (!t) { t = addThought({ id: tid, c: id, kind: 'room', text: v.text, stance: v.stance, settled: v.settled, created: v.created, touched: v.touched, refines: v.refines, re: v.re ? 'f_' + v.re : null }); t.x = c.x; t.y = c.y; t.pulse = performance.now(); }
+          if (!t) { t = addThought({ id: tid, c: id, kind: 'room', text: v.text, stance: v.stance, settled: v.settled, created: v.created, touched: v.touched, refines: v.refines, re: v.re ? 'f_' + v.re : null,
+            url: /^https?:\/\//.test(v.url || '') ? String(v.url) : '', src: String(v.src || '').slice(0, 40), note: v.url ? String(v.note || '').slice(0, 300) : '' }); t.x = c.x; t.y = c.y; t.pulse = performance.now(); }
           else if (!(refineOrig && refineOrig.id === tid)) { t.text = String(v.text || ''); t.stance = clamp(+v.stance || 0, -1, 1); t.settled = clamp(+v.settled || .2, .1, 1); t.touched = +v.touched || t.touched; t.refines = v.refines || 0; }
           t.pending = false; t.uid = v.uid; t.mine = v.uid === uidMe; t.alias = String(v.alias || 'someone').slice(0, 24); t.photo = /^https:\/\//.test(v.photo || '') ? v.photo : '';
           // thoughts you posted before photos were shared get yours added, so others can see who wrote them
@@ -2285,11 +2593,11 @@ function cloudRoom(rid, d) {   // runs inside the nebulae space
         for (const t of members(c)) if (!seen.has(t.id) && !t.pending) dropThought(t);
         layout(c);
       });
-      refreshPanel();
+      refreshPanel(); syncDots();
     }, e => cloudFail('read that nebula', e)));
   } else if (c.name !== name || c.q !== q || String(c.poles) !== String(poles)) { c.name = name || null; c.q = q; c.poles = poles; rebuildTerms(c); }
   c.members = Array.isArray(d.members) ? d.members : []; c.owner = d.owner; c.ownerAlias = String(d.ownerAlias || 'someone').slice(0, 24);
-  c.founder = d.owner === uidMe ? 'you' : 'other';
+  c.founder = d.owner === uidMe ? 'you' : 'other'; c.created = +d.created || 0; syncDots();
 }
 function cloudInvite() {   // an invite link looks like …#room-<id>
   if (!cloud.invite || !cloud.user) return;
@@ -2300,8 +2608,9 @@ function cloudInvite() {   // an invite link looks like …#room-<id>
 const cloudDoc = (c, t) => cloud.F.doc(cloud.db, 'nebulae', c.remote, 'thoughts', t.id.slice(2));
 const cloudNewId = c => cloud.F.doc(cloud.F.collection(cloud.db, 'nebulae', c.remote, 'thoughts')).id;
 function cloudSetThought(c, t) {
-  cloud.F.setDoc(cloudDoc(c, t), { text: t.text, stance: t.stance, settled: t.settled, created: t.created, touched: t.touched, refines: t.refines,
-    re: t.re ? t.re.slice(2) : null, uid: cloud.user.uid, alias: t.alias || shownAs(), photo: store.profile.hidden ? '' : cloud.user.photo || '' }, { merge: true }).catch(e => cloudFail('send that to the nebula', e));
+  cloud.F.setDoc(cloudDoc(c, t), Object.assign({ text: t.text, stance: t.stance, settled: t.settled, created: t.created, touched: t.touched, refines: t.refines,
+    re: t.re ? t.re.slice(2) : null, uid: cloud.user.uid, alias: t.alias || shownAs(), photo: store.profile.hidden ? '' : cloud.user.photo || '' },
+    t.url ? { url: t.url, src: String(t.src || '').slice(0, 40), note: String(t.note || '').slice(0, 300) } : {}), { merge: true }).catch(e => cloudFail('send that to the nebula', e));
 }
 const cloudDelete = (c, t) => cloud.F.deleteDoc(cloudDoc(c, t)).catch(e => cloudFail('remove that', e));
 const cloudRes = (c, t, on) => cloud.F.updateDoc(cloudDoc(c, t), { res: on ? cloud.F.arrayUnion(cloud.user.uid) : cloud.F.arrayRemove(cloud.user.uid) }).catch(e => cloudFail('save that', e));
@@ -2329,7 +2638,7 @@ window.addEventListener('resize', resize);
 resize();
 { const l = landingCam(); Object.assign(cam, l); Object.assign(goal, l); vc.x = vcT.x; vc.y = vcT.y; }
 setMode('landing'); syncNav(); autosize(); renderYou();
-if (spaces.galaxy.thoughts.length) nextExample();   // a first visit keeps "start anywhere"; a return visit gets an example
+if (hasOwn()) nextExample();   // a first visit keeps "start anywhere"; a return visit gets an example
 requestAnimationFrame(frame);
 cloudInit();
 if (!matchMedia('(pointer: coarse)').matches) setTimeout(() => { if (mode === 'landing') mind.focus({ preventScroll: true }); }, 400);
